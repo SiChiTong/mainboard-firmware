@@ -1,0 +1,6 @@
+.pio
+.clang_complete
+.gcc-flags.json
+.pioenvs
+.piolibdeps
+.DS_Store

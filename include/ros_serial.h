@@ -1,5 +1,5 @@
-#define XAVIER_RX                        PD6     // NUCLEO-F429ZI UART2-RX
-#define XAVIER_TX                        PD5     // NUCLEO-F429ZI UART2-TX
+#define XAVIER_RX                        PD2 //PD6     // NUCLEO-F429ZI UART2-RX
+#define XAVIER_TX                        PC12 //PD5     // NUCLEO-F429ZI UART2-TX
 #include "HardwareSerial.h"
 HardwareSerial XavierSerial(XAVIER_RX, XAVIER_TX);
 #define Serial1 XavierSerial

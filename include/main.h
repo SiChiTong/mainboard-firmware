@@ -1,14 +1,11 @@
 #include "Arduino.h"
+#include "motor_config.h"
+#include "error_codes.h"
 
 #define INFO_STREAM_ENABLE               true                      // Set Info Steaming enabled to topic.
 
-#define MOTOR_PULSE_MIN                  1100                      // Min uS pulse time
-#define MOTOR_PULSE_DEFAULT              1500                      // Default uS pulse time
-#define MOTOR_PULSE_MAX                  1900                      // Max uS pulse time
-
 #define ACS712_30A_SENS_MV_PER_AMP       66.0                      // 66 mV per 1.A
 #define ACS712_20A_SENS_MV_PER_AMP       100.0                     // 100 mV per 1.A
-
 
 #define ADC_READ_RESOLUTION_BIT          12                        // 12 bits for analog read resolution
 #define ADC_READ_MAX_VALUE               4096.0                    // 2^ADC_READ_RESOLUTION_BIT = 4096
@@ -32,6 +29,7 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int16MultiArray.h>
 #include <std_msgs/Float32MultiArray.h>
+#include <std_msgs/MultiArrayDimension.h>
 #include <std_msgs/Bool.h>
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include "Servo.h"
@@ -79,29 +77,21 @@ HardwareSerial hwserial_3(PD2, PC12);
 static Ping1D ping_1 { hwserial_3 };
 
 // New design
-int current_sens_pins[8] = {PF6, PF7, PF8, PF9, PF10, PF3, PC0, PF4};
-int motor_pinmap[8] = {PA15, PB3, PB10, PB11, PC6, PC7, PC8, PC9};
+int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
 int aux_pinmap[3] = {PD12, PD13, PD14};
-
-// Old design
-// int current_sens_pins[8] = {PF6, PF7, PF8, PF9, PF10, PF3, PC0, PF4};
-// int aux_pinmap[3] = {PD12, PD13, PD14};
-// int motor_pinmap[8] = {PF8, PF0, PF0, PF0, PF0, PF0, PF0, PF0};
-
 
 
 /* Callbacks
  */
 void motor_callback(const std_msgs::Int16MultiArray& data);
-
 void command_callback(const signal_msgs::Signal& data);
-
 static void indicator_callback(stimer_t *htim);
 void InitializeIndicatorTimer(uint32_t frequency);
 void SetFrequencyOfIndicatorTimer(uint32_t frequency);
 void InitializePeripheralPins();
 void PublishInfo(String msg);
 void EvaluateCommand(String type, String content);
+void InitializePingSonarDevices();
 
 /* Publisher Messages
  */
@@ -162,6 +152,10 @@ void EvaluateCommand(String type, String content)
         int freq = String(content).toInt();
         SetFrequencyOfIndicatorTimer(freq);
     }
+    else
+    {
+        nh.logerror(s2c("parameter_error:" + String(COMMAND_EVAL_FAILED)));
+    }
 }
 
 void InitializeIndicatorTimer(uint32_t frequency)
@@ -199,12 +193,16 @@ void InitializeHardwareSerials()
 
 void InitializePingSonarDevices()
 {
-    if (ping_1.initialize(PING_PULSE_TIME)) PublishInfo("ping_1 device on hwserial_3(PD2, PC12) Initialized successfully");
-    else PublishInfo("ping_1 device on hwserial_3(PD2, PC12) failed to initialize.");
+    bool init_state = true;
+    init_state = init_state && ping_1.initialize(PING_PULSE_TIME);
+
+    // if () PublishInfo("ping_1 device on hwserial_3(PD2, PC12) Initialized successfully");
+    // else PublishInfo("ping_1 device on hwserial_3(PD2, PC12) failed to initialize.");
 
     // if (ping_2.initialize()) PublishInfo("ping_2 device on hwserial_3(PD2, PC12) Initialized successfully");
     // else PublishInfo("ping_2 device on hwserial_3(PD2, PC12) failed to initialize.");
 
+    if (!init_state) nh.logerror(s2c("parameter_error:" + String(PING_SONAR_INIT_FAILED)));
 }
 
 void PublishPingSonarMeasurements()
@@ -217,11 +215,24 @@ void PublishPingSonarMeasurements()
     {
         range_msg.range = ping_1.distance() / 1000.0;
         ping_1_pub.publish(&range_msg);
-
-        // Serial.print("Distance: ");
-        // Serial.print(ping.distance());
-        // Serial.println(ping.confidence());
     }
+    else
+    {
+        nh.logerror(s2c("parameter_error:" + String(PING_SONAR_READ_FAILED)));
+    }
+}
+
+void InitializeCurrentsMessage()
+{
+    current_msg.layout.dim = (std_msgs::MultiArrayDimension *)
+    malloc(sizeof(std_msgs::MultiArrayDimension) * 2);
+    current_msg.layout.dim[0].label = "motor_currents";
+    current_msg.layout.dim[0].size = 8;
+    current_msg.layout.dim[0].stride = 1*8;
+    current_msg.layout.data_offset = 0;
+    // current_msg.layout.dim_length = 1;
+    current_msg.data_length = 8;
+    current_msg.data = (float *)malloc(sizeof(float)*8);
 }
 
 

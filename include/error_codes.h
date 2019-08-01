@@ -1,0 +1,4 @@
+#define PING_SONAR_INIT_FAILED      10
+#define PING_SONAR_READ_FAILED      11
+
+#define COMMAND_EVAL_FAILED         15

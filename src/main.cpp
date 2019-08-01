@@ -9,9 +9,8 @@ void motor_callback(const std_msgs::Int16MultiArray& data)
     {
         int motor_pulse_us = (int)data.data[i];
         motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
-        motors[i].writeMicroseconds((int)data.data);
-        Serial.print((int)data.data[i]);
-        Serial.println(" ");
+        motors[i].writeMicroseconds(motor_pulse_us);
+        if ((int)data.data[i] != 1500) { Serial.print((int)data.data[i]); Serial.println(" " + String(i)); }
     }
 }
 // endregion MotorCallbacks
@@ -40,9 +39,6 @@ void InitMotors()
 
 void PublishMotorCurrents(int readings_count=5)
 {
-    float *currents;
-    current_msg.data_length = 8;
-
     for (size_t i = 0; i < 8; i++)
     {
         double adc_val = 0;
@@ -52,16 +48,10 @@ void PublishMotorCurrents(int readings_count=5)
         }
         adc_val /= (double)readings_count;
 
-
         double voltage_mv = ADC_READ_MAX_VOLTAGE * adc_val / ADC_READ_MAX_VALUE;
         double current_ma = 1000.0 * (voltage_mv - 2500.0) / ACS712_30A_SENS_MV_PER_AMP;
-        currents[i] = (float)current_ma - ADC_OFFSET_CURRENT_ERROR;
-        // current_msg.data[i] = current_ma - ADC_OFFSET_CURRENT_ERROR;
-
+        current_msg.data[i] = (float)current_ma - ADC_OFFSET_CURRENT_ERROR;
     }
-    // FIX: THIS DOES NOT WORK!
-    current_msg.data = currents;
-
     motor_currents.publish(&current_msg);
 }
 // endregion Methods
@@ -70,7 +60,7 @@ void setup()
 {
     Serial.begin(9600); // Debug port
     InitializeHardwareSerials();
-
+    nh.getHardware()->setBaud(115200);
     InitNode();
 
     // region Publishers
@@ -87,16 +77,16 @@ void setup()
     // endregion Subscibers
 
     // region Initialize Modules
-    InitMotors();
 
-    PublishInfo("Setting ADC Resolution to:" + String(ADC_READ_RESOLUTION_BIT) + " bit.");
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
 
+    InitMotors();
     InitializePeripheralPins();
     InitializeIndicatorTimer(1);
-
-    InitializePingSonarDevices();
+    InitializeCurrentsMessage();
+    // InitializePingSonarDevices();
     // endregion Initialize Modules
+
 }
 
 void loop()
@@ -104,7 +94,7 @@ void loop()
     // for (size_t i = 0; i < 4; i++) {
     //     PublishPingSonarMeasurements();
     // }
-    PublishPingSonarMeasurements();
+    // PublishPingSonarMeasurements();
     PublishMotorCurrents(2);
     nh.spinOnce();
 }

@@ -1,5 +1,5 @@
-#ifndef _ROS_signal_msgs_Signal_h
-#define _ROS_signal_msgs_Signal_h
+#ifndef _ROS_mainboard_firmware_Signal_h
+#define _ROS_mainboard_firmware_Signal_h
 
 #include <stdint.h>
 #include <string.h>
@@ -7,7 +7,7 @@
 #include "ros/msg.h"
 #include "std_msgs/Header.h"
 
-namespace signal_msgs
+namespace mainboard_firmware
 {
 
   class Signal : public ros::Msg
@@ -69,7 +69,7 @@ namespace signal_msgs
      return offset;
     }
 
-    const char * getType(){ return "signal_msgs/Signal"; };
+    const char * getType(){ return "mainboard_firmware/Signal"; };
     const char * getMD5(){ return "0286166b3764d1dabbed7eb575448163"; };
 
   };

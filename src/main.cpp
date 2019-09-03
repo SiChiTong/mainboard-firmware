@@ -16,7 +16,7 @@ void motor_callback(const std_msgs::Int16MultiArray& data)
 // endregion MotorCallbacks
 
 // region callbacks
-void command_callback(const signal_msgs::Signal& data)
+void command_callback(const mainboard_firmware::Signal& data)
 {
     EvaluateCommand(data.type, data.content);
 }

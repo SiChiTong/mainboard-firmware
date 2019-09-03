@@ -33,7 +33,7 @@
 #include <std_msgs/Bool.h>
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include "Servo.h"
-#include <signal_msgs/Signal.h>
+#include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
 #include "ping1d.h"
 
@@ -84,7 +84,7 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
 /* Callbacks
  */
 void motor_callback(const std_msgs::Int16MultiArray& data);
-void command_callback(const signal_msgs::Signal& data);
+void command_callback(const mainboard_firmware::Signal& data);
 static void indicator_callback(stimer_t *htim);
 void InitializeIndicatorTimer(uint32_t frequency);
 void SetFrequencyOfIndicatorTimer(uint32_t frequency);
@@ -112,7 +112,7 @@ ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
 /* Subscribers
  */
 ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", motor_callback);
-ros::Subscriber<signal_msgs::Signal> command_sub("/turquoise/board/cmd", command_callback);
+ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/board/cmd", command_callback);
 
 
 void PublishInfo(String msg)

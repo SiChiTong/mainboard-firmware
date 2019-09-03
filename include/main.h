@@ -154,7 +154,7 @@ void EvaluateCommand(String type, String content)
     }
     else
     {
-        nh.logerror(s2c("parameter_error:" + String(COMMAND_EVAL_FAILED)));
+        nh.logerror(s2c("PRM_ERR:" + String(COMMAND_EVAL_FAILED)));
     }
 }
 
@@ -202,7 +202,7 @@ void InitializePingSonarDevices()
     // if (ping_2.initialize()) PublishInfo("ping_2 device on hwserial_3(PD2, PC12) Initialized successfully");
     // else PublishInfo("ping_2 device on hwserial_3(PD2, PC12) failed to initialize.");
 
-    if (!init_state) nh.logerror(s2c("parameter_error:" + String(PING_SONAR_INIT_FAILED)));
+    if (!init_state) nh.logerror(s2c("PRM_ERR:" + String(PING_SONAR_INIT_FAILED)));
 }
 
 void PublishPingSonarMeasurements()
@@ -218,7 +218,7 @@ void PublishPingSonarMeasurements()
     }
     else
     {
-        nh.logerror(s2c("parameter_error:" + String(PING_SONAR_READ_FAILED)));
+        nh.logerror(s2c("PRM_ERR:" + String(PING_SONAR_READ_FAILED)));
     }
 }
 

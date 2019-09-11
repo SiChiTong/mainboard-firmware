@@ -1,9 +1,32 @@
+// MIT License
+
+// Copyright (c) 2019 ITU AUV Team / Electronics
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 // #define USE_ETHERNET
 #include "main.h"
 
 // region MotorCallbacks
 void motor_callback(const std_msgs::Int16MultiArray& data)
 {
+    last_motor_update = millis();
     // Write Data to Motor.
     for (size_t i = 0; i < 8; i++)
     {
@@ -58,25 +81,18 @@ void PublishMotorCurrents(int readings_count=5)
 
 void setup()
 {
-    Serial.begin(9600); // Debug port
+    Serial.begin(DEBUG_BAUDRATE); // Debug port
     InitializeHardwareSerials();
-    nh.getHardware()->setBaud(115200);
     InitNode();
 
-    // region Publishers
     nh.advertise(diagnose_error);
     nh.advertise(diagnose_info);
 
     nh.advertise(motor_currents);
     nh.advertise(ping_1_pub);
-    // endregion Publishers
 
-    // region Subscribers
     nh.subscribe(motor_subs);
     nh.subscribe(command_sub);
-    // endregion Subscibers
-
-    // region Initialize Modules
 
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
 
@@ -85,8 +101,7 @@ void setup()
     InitializeIndicatorTimer(1);
     InitializeCurrentsMessage();
     // InitializePingSonarDevices();
-    // endregion Initialize Modules
-
+    pinMode(USER_BTN, INPUT);
 }
 
 void loop()
@@ -95,6 +110,7 @@ void loop()
     //     PublishPingSonarMeasurements();
     // }
     // PublishPingSonarMeasurements();
+    SpinIndicatorTimer();
     PublishMotorCurrents(2);
     nh.spinOnce();
 }

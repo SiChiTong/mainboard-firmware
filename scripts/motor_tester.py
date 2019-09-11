@@ -46,4 +46,7 @@ def talker():
 
 
 if __name__ == '__main__':
-    talker()
+    try:
+        talker()
+    except KeyboardInterrupt:
+        exit()

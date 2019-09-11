@@ -1,22 +1,29 @@
+// MIT License
+
+// Copyright (c) 2019 ITU AUV Team / Electronics
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include "Arduino.h"
 #include "motor_config.h"
 #include "error_codes.h"
-
-#define INFO_STREAM_ENABLE               true                      // Set Info Steaming enabled to topic.
-
-#define ACS712_30A_SENS_MV_PER_AMP       66.0                      // 66 mV per 1.A
-#define ACS712_20A_SENS_MV_PER_AMP       100.0                     // 100 mV per 1.A
-
-#define ADC_READ_RESOLUTION_BIT          12                        // 12 bits for analog read resolution
-#define ADC_READ_MAX_VALUE               4096.0                    // 2^ADC_READ_RESOLUTION_BIT = 4096
-#define ADC_READ_MAX_VOLTAGE             3300.0                    // 12 bits for analog read resolution max 3.3V
-#define ADC_OFFSET_CURRENT_ERROR         800.0                     // 800 mA offset error.
-
-#define INDICATOR_TIMER                  TIM7                      // Timer instance of indicator Led. (LED_GREEN)
-
-#define PING_PULSE_TIME                  5
-#define PING_TIMEOUT                     50
-
+#include "params.h"
 
 #if defined(USE_ETHERNET)
     #include "ros_ethernet.h"
@@ -37,52 +44,8 @@
 #include <sensor_msgs/Range.h>
 #include "ping1d.h"
 
-/* Node Handle
- */
-ros::NodeHandle nh;
+/* *************************** Callbacks *************************** */
 
-/* Initialize NodeHandle with ethernet or serial
- */
-void InitNode()
-{
-    #if defined(USE_ETHERNET)
-        Ethernet.begin(mac, ip);
-        delay(1000);
-        nh.getHardware()->setConnection(server, serverPort);
-        nh.initNode();
-    #else
-        nh.initNode();
-    #endif
-}
-
-
-/* String To Char Pointer
- * Converts string to char pointer.
- * Used in String Publisher.
- * @brief: hello
- */
-char* s2c(String command)
-{
-    if(command.length()!=0)
-    {
-        char *p = const_cast<char*>(command.c_str());
-        return p;
-    }
-}
-
-Servo motors[8];
-
-// PING SONAR CONFIGURATION
-HardwareSerial hwserial_3(PD2, PC12);
-static Ping1D ping_1 { hwserial_3 };
-
-// New design
-int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
-int aux_pinmap[3] = {PD12, PD13, PD14};
-
-
-/* Callbacks
- */
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 static void indicator_callback(stimer_t *htim);
@@ -92,6 +55,30 @@ void InitializePeripheralPins();
 void PublishInfo(String msg);
 void EvaluateCommand(String type, String content);
 void InitializePingSonarDevices();
+
+/* *************************** Variables *************************** */
+
+/* Node Handle
+ */
+ros::NodeHandle nh;
+
+/* ESC init.
+ */
+Servo motors[8];
+
+/* PING SONAR CONFIGURATION
+ */
+HardwareSerial hwserial_3(PD2, PC12);
+static Ping1D ping_1 { hwserial_3 };
+
+// New design
+int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
+int aux_pinmap[3] = {PD12, PD13, PD14};
+
+/* Variables
+ */
+uint32_t last_motor_update = millis();
+bool last_state = false;  //motor disabled
 
 /* Publisher Messages
  */
@@ -114,12 +101,28 @@ ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
 ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", motor_callback);
 ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/board/cmd", command_callback);
 
+/* *************************** Functions *************************** */
+
+/* Initialize NodeHandle with ethernet or serial
+ */
+void InitNode()
+{
+    #if defined(USE_ETHERNET)
+        Ethernet.begin(mac, ip);
+        delay(1000);
+        nh.getHardware()->setConnection(server, serverPort);
+        nh.initNode();
+    #else
+        nh.getHardware()->setBaud(ROS_BAUDRATE);
+        nh.initNode();
+    #endif
+}
 
 void PublishInfo(String msg)
 {
     if (INFO_STREAM_ENABLE)
     {
-        info_msg.data = s2c(msg);
+        info_msg.data = msg.c_str();
         diagnose_info.publish(&info_msg);
         info_msg.data = "";
     }
@@ -154,7 +157,7 @@ void EvaluateCommand(String type, String content)
     }
     else
     {
-        nh.logerror(s2c("PRM_ERR:" + String(COMMAND_EVAL_FAILED)));
+        nh.logerror(String("PRM_ERR:" + String(COMMAND_EVAL_FAILED)).c_str());
     }
 }
 
@@ -177,6 +180,25 @@ void SetFrequencyOfIndicatorTimer(uint32_t frequency)
     double period = ( (getTimerClkFreq(INDICATOR_TIMER)) / (double)(prescaler+1) / frequency) - 1;
 
     INDICATOR_TIMER->ARR = (uint32_t)(period - 1);
+    INDICATOR_TIMER->CNT = 0;
+}
+
+void SpinIndicatorTimer()
+{
+    bool state_change = (millis() - last_motor_update > MOTOR_TIMEOUT) ^ last_state;
+    last_state = millis() - last_motor_update > MOTOR_TIMEOUT;
+
+    if (state_change)
+    {
+        if (last_state == 1)
+        {
+            SetFrequencyOfIndicatorTimer(1);
+        }
+        else
+        {
+            SetFrequencyOfIndicatorTimer(10);
+        }
+    }
 }
 
 void InitializePeripheralPins()
@@ -202,7 +224,7 @@ void InitializePingSonarDevices()
     // if (ping_2.initialize()) PublishInfo("ping_2 device on hwserial_3(PD2, PC12) Initialized successfully");
     // else PublishInfo("ping_2 device on hwserial_3(PD2, PC12) failed to initialize.");
 
-    if (!init_state) nh.logerror(s2c("PRM_ERR:" + String(PING_SONAR_INIT_FAILED)));
+    if (!init_state) nh.logerror(String("PRM_ERR:" + String(PING_SONAR_INIT_FAILED)).c_str());
 }
 
 void PublishPingSonarMeasurements()
@@ -218,7 +240,7 @@ void PublishPingSonarMeasurements()
     }
     else
     {
-        nh.logerror(s2c("PRM_ERR:" + String(PING_SONAR_READ_FAILED)));
+        nh.logerror(String("PRM_ERR:" + String(PING_SONAR_READ_FAILED)).c_str());
     }
 }
 
@@ -237,4 +259,4 @@ void InitializeCurrentsMessage()
 
 
 
-//
+// End of file.

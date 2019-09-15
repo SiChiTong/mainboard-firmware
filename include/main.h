@@ -20,15 +20,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "Arduino.h"
-#include "motor_config.h"
-#include "error_codes.h"
-#include "params.h"
+#define USE_ETHERNET
+#define DEBUG_PRINT
+
+/* *************************** Includes *************************** */
+#include <Arduino.h>
+#include <motor_config.h>
+#include <error_codes.h>
+#include <params.h>
 
 #if defined(USE_ETHERNET)
-    #include "ros_ethernet.h"
+    #include <ros_ethernet.h>
 #else
-    #include "ros_serial.h"
+    #include <ros_serial.h>
 #endif
 
 #include <ros.h>
@@ -39,13 +43,14 @@
 #include <std_msgs/MultiArrayDimension.h>
 #include <std_msgs/Bool.h>
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
-#include "Servo.h"
+#include <Servo.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
-#include "ping1d.h"
+#include <ping1d.h>
+/* *************************** Includes *************************** */
+
 
 /* *************************** Callbacks *************************** */
-
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 static void indicator_callback(stimer_t *htim);
@@ -57,12 +62,11 @@ void EvaluateCommand(String type, String content);
 void InitializePingSonarDevices();
 
 /* *************************** Variables *************************** */
-
 /* Node Handle
  */
 ros::NodeHandle nh;
 
-/* ESC init.
+/* Motors define.
  */
 Servo motors[8];
 
@@ -71,11 +75,14 @@ Servo motors[8];
 HardwareSerial hwserial_3(PD2, PC12);
 static Ping1D ping_1 { hwserial_3 };
 
-// New design
+/* This section includes pinmaps for current sensors and auxilary channel pinmaps
+ * currently, mainboard does not support such features
+ * therefore these features are not tested yet.
+ */
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
 int aux_pinmap[3] = {PD12, PD13, PD14};
 
-/* Variables
+/* Global Variables
  */
 uint32_t last_motor_update = millis();
 bool last_state = false;  //motor disabled
@@ -102,20 +109,65 @@ ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/inpu
 ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/board/cmd", command_callback);
 
 /* *************************** Functions *************************** */
-
 /* Initialize NodeHandle with ethernet or serial
  */
 void InitNode()
 {
     #if defined(USE_ETHERNET)
+
+        #ifdef DEBUG_PRINT
+            Serial.println("Connecting to ROS via Ethernet interface.");
+        #endif
+
         Ethernet.begin(mac, ip);
+
+        #ifdef DEBUG_PRINT
+            Serial.print("Current IP Address of this machine: ");
+            Serial.println(Ethernet.localIP());
+            Serial.print("IP Address of the machine running ROS: ");
+            Serial.println(server);
+            Serial.print("Ros Host port:");
+            Serial.println(serverPort);
+        #endif
+        
         delay(1000);
+
         nh.getHardware()->setConnection(server, serverPort);
         nh.initNode();
+
+        #ifdef DEBUG_PRINT
+            Serial.println("Connection Successfull.");
+        #endif
+
     #else
+        #ifdef DEBUG_PRINT
+            Serial.println("Connecting to ROS via Serial interface.");
+            Serial.print("Baudrate of connection:");
+            Serial.println(ROS_BAUDRATE);
+        #endif
+
         nh.getHardware()->setBaud(ROS_BAUDRATE);
         nh.initNode();
+
+        #ifdef DEBUG_PRINT
+            Serial.println("Connection Successfull.");
+        #endif
     #endif
+}
+
+/* Initialize and Attach motors to spesified pins.
+ * Writes default MOTOR_PULSE_DEFAULT us pulse to motors.
+ */
+void InitMotors()
+{
+    #ifdef DEBUG_PRINT
+        Serial.println("Initializing motor controllers with " + String(MOTOR_PULSE_DEFAULT) + " us pulse time.");
+    #endif
+    for (size_t i = 0; i < 8; i++)
+    {
+        motors[i].attach(motor_pinmap[i]);
+        motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
+    }
 }
 
 void PublishInfo(String msg)
@@ -130,6 +182,12 @@ void PublishInfo(String msg)
 
 void EvaluateCommand(String type, String content)
 {
+    #ifdef DEBUG_PRINT
+        Serial.print("Received Command:");
+        Serial.print(type);
+        Serial.print(":");
+        Serial.println(content);
+    #endif
     if (String(type) == "pinmode_output")
     {
         int pin = String(content).toInt();
@@ -203,6 +261,9 @@ void SpinIndicatorTimer()
 
 void InitializePeripheralPins()
 {
+    #ifdef DEBUG_PRINT
+        Serial.println("Setting up I/O Pins.");
+    #endif
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
@@ -210,6 +271,9 @@ void InitializePeripheralPins()
 
 void InitializeHardwareSerials()
 {
+    #ifdef DEBUG_PRINT
+        Serial.println("Setting up hardware serials.");
+    #endif
     hwserial_3.begin(115200);
 }
 
@@ -244,6 +308,24 @@ void PublishPingSonarMeasurements()
     }
 }
 
+void PublishMotorCurrents(int readings_count=5)
+{
+    for (size_t i = 0; i < 8; i++)
+    {
+        double adc_val = 0;
+        for (size_t j = 0; j < readings_count; j++)
+        {
+            adc_val += analogRead(current_sens_pins[i]);
+        }
+        adc_val /= (double)readings_count;
+
+        double voltage_mv = ADC_READ_MAX_VOLTAGE * adc_val / ADC_READ_MAX_VALUE;
+        double current_ma = 1000.0 * (voltage_mv - 2500.0) / ACS712_30A_SENS_MV_PER_AMP;
+        current_msg.data[i] = (float)current_ma - ADC_OFFSET_CURRENT_ERROR;
+    }
+    motor_currents.publish(&current_msg);
+}
+
 void InitializeCurrentsMessage()
 {
     current_msg.layout.dim = (std_msgs::MultiArrayDimension *)
@@ -257,6 +339,4 @@ void InitializeCurrentsMessage()
     current_msg.data = (float *)malloc(sizeof(float)*8);
 }
 
-
-
-// End of file.
+// End of file. Copyright (c) 2019 ITU AUV Team / Electronics

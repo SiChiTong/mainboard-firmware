@@ -30,8 +30,10 @@
 // Set the shield settings
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(192, 168, 1, 177);
+// IPAddress ip(160, 75, 46, 192);
 
 // Set the rosserial socket server IP address
-IPAddress server(192, 168, 1, 195);
+IPAddress server(192, 168, 1, 175);
+// IPAddress server(160, 75, 46, 191);
 // Set the rosserial socket server port
 const uint16_t serverPort = 11411;

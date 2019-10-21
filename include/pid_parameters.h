@@ -20,12 +20,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define MOTOR_PULSE_RANGE                400 
-#define MOTOR_PULSE_DEFAULT              1500                                      // Default uS pulse time
-#define MOTOR_PULSE_MIN                  MOTOR_PULSE_DEFAULT - MOTOR_PULSE_RANGE   // Min uS pulse time
-#define MOTOR_PULSE_MAX                  MOTOR_PULSE_DEFAULT + MOTOR_PULSE_RANGE   // Max uS pulse time
+#define KP_POSX             1.0
+#define KI_POSX             1.0
+#define KD_POSX             1.0
 
-// const int motor_pinmap[8] = {PF8, PF0, PE5, PE3, PE2, PG3, PD6, PD3};
+#define KP_POSY             1.0
+#define KI_POSY             1.0
+#define KD_POSY             1.0
 
-// Temporary pinmap
-const int motor_pinmap[8] = {PF8, PD6, PE5, PE3, PE2, PG3, PF0, PD3};
+#define KP_POSZ             1.0
+#define KI_POSZ             1.0
+#define KD_POSZ             1.0
+
+#define KP_ROTX             1.0
+#define KI_ROTX             1.0
+#define KD_ROTX             1.0
+
+#define KP_ROTY             1.0
+#define KI_ROTY             1.0
+#define KD_ROTY             1.0
+
+#define KP_ROTZ             1.0
+#define KI_ROTZ             1.0
+#define KD_ROTZ             1.0

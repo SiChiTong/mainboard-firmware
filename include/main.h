@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define USE_ETHERNET
+// #define USE_ETHERNET
 #define DEBUG_PRINT
 
 /* *************************** Includes *************************** */
@@ -42,15 +42,23 @@
 #include <std_msgs/Float32MultiArray.h>
 #include <std_msgs/MultiArrayDimension.h>
 #include <std_msgs/Bool.h>
+#include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include <Servo.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
 #include <ping1d.h>
+#include <transformations.h>
+
+#include <AutoPID.h>
+#include <pid_parameters.h>
 /* *************************** Includes *************************** */
 
 
 /* *************************** Callbacks *************************** */
+void cmd_vel_callback(const geometry_msgs::Twist& data);
+void odom_callback(const nav_msgs::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 static void indicator_callback(stimer_t *htim);
@@ -87,26 +95,48 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
 uint32_t last_motor_update = millis();
 bool last_state = false;  //motor disabled
 
-/* Publisher Messages
+/**
+ * @brief PID Controllers
+ * 
+ */
+float thruster_allocation[6][8];
+float pid_gains[6][3];
+double v[6] = {0, 0, 0, 0, 0, 0}; // Velocity & Ang. Velocity in 6 DOF.
+double n[6] = {0, 0, 0, 0, 0, 0}; // Position & Orientation in 6 DOF.
+double velocity_setpoint[6] = {0, 0, 0, 0, 0, 0};
+unsigned long last_odom_update = millis();
+AutoPID controllers[6] = {
+    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Pos_X
+    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Pos_Y
+    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Pos_Z
+    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Rot_X
+    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Rot_Y
+    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0) // Rot_Z
+    };
+
+/**
+ * @brief Publisher Messages
  */
 std_msgs::String info_msg;
 std_msgs::String error_msg;
 std_msgs::Float32MultiArray current_msg;
 sensor_msgs::Range range_msg;
 
-/* Publishers
+/**
+ * @brief Publishers
  */
 ros::Publisher diagnose_info("/turquoise/board/diagnose/info", &info_msg);
 ros::Publisher diagnose_error("/turquoise/board/diagnose/error", &error_msg);
-
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
-
 ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
 
-/* Subscribers
+/**
+ * @brief Subscribers
  */
 ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", motor_callback);
 ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/board/cmd", command_callback);
+ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", cmd_vel_callback);
+ros::Subscriber<nav_msgs::Odometry> odom_sub("/turquoise/odom", odom_callback);
 
 /* *************************** Functions *************************** */
 /* Initialize NodeHandle with ethernet or serial
@@ -155,6 +185,48 @@ void InitNode()
     #endif
 }
 
+void GetThrusterAllocationMatrix()
+{
+    char *alloc_param_names[6] = {"~allocation_cx", "~allocation_cy", "~allocation_cz",
+        "~allocation_rx", "~allocation_ry", "~allocation_rz"};
+
+    for (size_t i = 0; i < 6; i++)
+    {
+        if (!nh.getParam(alloc_param_names[i], thruster_allocation[i], 8)) 
+        { 
+            for (size_t j = 0; j < 8; j++)
+            {
+                thruster_allocation[i][j]= 0;
+            }
+        }
+    }
+}
+
+void GetPIDControllerParameters()
+{
+    char *pid_param_names[6] = {"~pid_cx", "~pid_cy", "~pid_cz",
+        "~pid_rx", "~pid_ry", "~pid_rz"};
+    for (size_t i = 0; i < 6; i++)
+    {
+        if (!nh.getParam(pid_param_names[i], pid_gains[i], 3)) 
+        { 
+            for (size_t j = 0; j < 3; j++)
+            {
+                pid_gains[i][j]= 0.0;
+            }
+        }
+    }
+}
+
+void UpdatePIDControllerGains()
+{
+    for (size_t i = 0; i < 6; i++)
+    {
+        controllers[i].setGains((double)pid_gains[i][0], (double)pid_gains[i][1], (double)pid_gains[i][2]);
+    }
+    
+}
+
 /* Initialize and Attach motors to spesified pins.
  * Writes default MOTOR_PULSE_DEFAULT us pulse to motors.
  */
@@ -177,6 +249,23 @@ void PublishInfo(String msg)
         info_msg.data = msg.c_str();
         diagnose_info.publish(&info_msg);
         info_msg.data = "";
+    }
+}
+
+void RunPIDControllers(double* output, double dt)
+{
+    for (size_t i = 0; i < 6; i++)
+    {
+        if (i == 3 || i == 4)
+        {
+            // Roll and Pitch Controllers are position controller.
+            controllers[i].run(0.0, n[i], dt);
+        }
+        else
+        {
+            // Others follow cmd_vel topic.
+            controllers[i].run(velocity_setpoint[i], v[i], dt);
+        }
     }
 }
 
@@ -218,6 +307,7 @@ void EvaluateCommand(String type, String content)
         nh.logerror(String("PRM_ERR:" + String(COMMAND_EVAL_FAILED)).c_str());
     }
 }
+
 
 void InitializeIndicatorTimer(uint32_t frequency)
 {

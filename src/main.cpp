@@ -45,19 +45,8 @@ void odom_callback(const nav_msgs::Odometry& data)
     
     double controller_output[6];
     RunPIDControllers(controller_output, dt);
-    for (size_t i = 0; i < 6; i++)
-    {
-        Serial.print(controller_output[i]);
-        Serial.print(" ");
-    }
-    Serial.println();
-}
-
-void cmd_vel_callback(const geometry_msgs::Twist& data)
-{
-    float cmd_vector[6] = {data.linear.x, data.linear.y, data.linear.z, data.angular.x, data.angular.y, data.angular.z};
     
-    // PID CONTROLLER
+    // PID CONTROLLER OUTPUT TO THRUSTER CONFIGURATION
     
     float thruster_vector[8];
     float sum = 0;
@@ -67,26 +56,50 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
         sum = 0;
         for (size_t j = 0; j < 6; j++)
         {
-            sum += cmd_vector[j] * thruster_allocation[j][i];
+            sum += controller_output[j] * thruster_allocation[j][i];
         }
         thruster_vector[i] = sum;
     }
 
-    #ifdef defined(DEBUG_PRINT)
+    debug("Calculated thruster vector:", "s");
     for (size_t i = 0; i < 8; i++)
     {
-        Serial.print(thruster_vector[i]);
-        Serial.print(" ");
+        debug(thruster_vector[i], "s");
+        debug(" ", "s");
     }
-    Serial.println();
-    #endif
+    debug("\n", "s");
 
-    for (size_t i = 0; i < 8; i++)
+    if (millis() - last_motor_update > MOTOR_TIMEOUT)
     {
-        int motor_pulse_us = (int)thruster_vector[i];
-        motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
-        motors[i].writeMicroseconds(motor_pulse_us);
+        // TIMEOUT
+        debug("Timeout.. Resetting motors.\n", "rs");
+        for (size_t i = 0; i < 8; i++)
+        {
+            motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
+        }
     }
+    else
+    {
+        // NORMAL-OPERATION
+        for (size_t i = 0; i < 8; i++)
+        {
+            int motor_pulse_us = (int)thruster_vector[i];
+            motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
+            motors[i].writeMicroseconds(motor_pulse_us);
+        }
+    }
+}
+
+void cmd_vel_callback(const geometry_msgs::Twist& data)
+{
+    last_motor_update = millis();
+
+    velocity_setpoint[0] = data.linear.x;
+    velocity_setpoint[0] = data.linear.y;
+    velocity_setpoint[0] = data.linear.z;
+    velocity_setpoint[0] = data.angular.x;
+    velocity_setpoint[0] = data.angular.y;
+    velocity_setpoint[0] = data.angular.z;
 }
 
 /* Motor value update callback
@@ -129,18 +142,11 @@ void setup()
 {
     Serial.begin(DEBUG_BAUDRATE);
     InitializeHardwareSerials();
+    debug("Initializing ROS\n", "s");
     InitNode();
 
-    nh.advertise(diagnose_error);
-    nh.advertise(diagnose_info);
-    nh.advertise(motor_currents);
-    nh.advertise(ping_1_pub);
-
-    nh.subscribe(motor_subs);
-    nh.subscribe(cmd_vel_sub);
-    nh.subscribe(command_sub);
-    nh.subscribe(odom_sub);
-
+    debug("Analog Read Resolution:" + String(ADC_READ_RESOLUTION_BIT) 
+        + String(" bits, range from 0-") + String(pow(2, ADC_READ_RESOLUTION_BIT)) + String("\n"), "s");
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
 
     InitMotors();
@@ -152,9 +158,10 @@ void setup()
 
     /* ********** HALT OPERATION ********** */
     while (!nh.connected()) { nh.spinOnce(); }
+    debug("Connected to ROS...\n", "sr");
     /* ********** HALT OPERATION ********** */
 
-
+    debug("Getting parameters...\n", "sr");
     /* ********** GET PARAMETERS ********** */
     GetThrusterAllocationMatrix();
     GetPIDControllerParameters();

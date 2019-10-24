@@ -20,8 +20,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+
+
 // #define USE_ETHERNET
 #define DEBUG_PRINT
+// #define ALLOW_DIRECT_CONTROL
+
+
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
@@ -53,6 +58,7 @@
 
 #include <AutoPID.h>
 #include <pid_parameters.h>
+#include <math.h>
 /* *************************** Includes *************************** */
 
 
@@ -93,7 +99,7 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
 /* Global Variables
  */
 uint32_t last_motor_update = millis();
-bool last_state = false;  //motor disabled
+bool last_motor_timeout_state = false;  //motor disabled
 
 /**
  * @brief PID Controllers
@@ -133,8 +139,10 @@ ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
 /**
  * @brief Subscribers
  */
+#if defined(ALLOW_DIRECT_CONTROL)
 ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", motor_callback);
-ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/board/cmd", command_callback);
+#endif
+ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", command_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", cmd_vel_callback);
 ros::Subscriber<nav_msgs::Odometry> odom_sub("/turquoise/odom", odom_callback);
 
@@ -183,6 +191,21 @@ void InitNode()
             Serial.println("Connection Successfull.");
         #endif
     #endif
+}
+
+void InitSubPub()
+{
+    nh.advertise(diagnose_error);
+    nh.advertise(diagnose_info);
+    nh.advertise(motor_currents);
+    nh.advertise(ping_1_pub);
+
+    #if defined(ALLOW_DIRECT_CONTROL)
+    nh.subscribe(motor_subs);
+    #endif
+    nh.subscribe(cmd_vel_sub);
+    nh.subscribe(command_sub);
+    nh.subscribe(odom_sub);
 }
 
 void GetThrusterAllocationMatrix()
@@ -269,6 +292,27 @@ void RunPIDControllers(double* output, double dt)
     }
 }
 
+template<typename T>
+void debug(T msg, String type)
+{
+    #if defined(DEBUG_PRINT)
+    if (type == "s" || type == "sr" || type == "rs")
+        Serial.print(String(msg));
+    #endif
+
+    #if defined(DEBUG_LOG)
+    if (type == "r" || type == "sr" || type == "rs")
+        nh.logdebug(String(msg).c_str());
+    #endif
+}
+ 
+template void debug(int, String);
+template void debug(float, String);
+template void debug(double, String);
+template void debug(char*, String);
+template void debug(String, String);
+
+
 void EvaluateCommand(String type, String content)
 {
     #ifdef DEBUG_PRINT
@@ -333,12 +377,12 @@ void SetFrequencyOfIndicatorTimer(uint32_t frequency)
 
 void SpinIndicatorTimer()
 {
-    bool state_change = (millis() - last_motor_update > MOTOR_TIMEOUT) ^ last_state;
-    last_state = millis() - last_motor_update > MOTOR_TIMEOUT;
+    bool state_change = (millis() - last_motor_update > MOTOR_TIMEOUT) ^ last_motor_timeout_state;
+    last_motor_timeout_state = millis() - last_motor_update > MOTOR_TIMEOUT;
 
     if (state_change)
     {
-        if (last_state == 1)
+        if (last_motor_timeout_state == 1)
         {
             SetFrequencyOfIndicatorTimer(1);
         }

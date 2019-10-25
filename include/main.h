@@ -57,7 +57,6 @@
 #include <transformations.h>
 
 #include <AutoPID.h>
-#include <pid_parameters.h>
 #include <math.h>
 /* *************************** Includes *************************** */
 
@@ -311,7 +310,6 @@ template void debug(float, String);
 template void debug(double, String);
 template void debug(char*, String);
 template void debug(String, String);
-
 
 void EvaluateCommand(String type, String content)
 {

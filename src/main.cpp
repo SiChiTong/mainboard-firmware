@@ -83,7 +83,7 @@ void odom_callback(const nav_msgs::Odometry& data)
         // NORMAL-OPERATION
         for (size_t i = 0; i < 8; i++)
         {
-            int motor_pulse_us = (int)thruster_vector[i];
+            int motor_pulse_us = get_pwm(thruster_vector[i], thruster_direction[i]);
             motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
             motors[i].writeMicroseconds(motor_pulse_us);
         }

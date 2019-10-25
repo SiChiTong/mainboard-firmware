@@ -95,11 +95,11 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
     last_motor_update = millis();
 
     velocity_setpoint[0] = data.linear.x;
-    velocity_setpoint[0] = data.linear.y;
-    velocity_setpoint[0] = data.linear.z;
-    velocity_setpoint[0] = data.angular.x;
-    velocity_setpoint[0] = data.angular.y;
-    velocity_setpoint[0] = data.angular.z;
+    velocity_setpoint[1] = data.linear.y;
+    velocity_setpoint[2] = data.linear.z;
+    velocity_setpoint[3] = data.angular.x;
+    velocity_setpoint[4] = data.angular.y;
+    velocity_setpoint[5] = data.angular.z;
 }
 
 /* Motor value update callback

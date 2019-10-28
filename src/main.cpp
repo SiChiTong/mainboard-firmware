@@ -61,22 +61,19 @@ void odom_callback(const nav_msgs::Odometry& data)
         thruster_vector[i] = sum;
     }
 
-    debug("Calculated thruster vector:", "s");
+    debug("Calculated thruster vector:");
     for (size_t i = 0; i < 8; i++)
     {
-        debug(thruster_vector[i], "s");
-        debug(" ", "s");
+        debug(thruster_vector[i]);
+        debug(" ");
     }
-    debug("\n", "s");
+    debugln("");
 
     if (millis() - last_motor_update > MOTOR_TIMEOUT)
     {
         // TIMEOUT
-        debug("Timeout.. Resetting motors.\n", "rs");
-        for (size_t i = 0; i < 8; i++)
-        {
-            motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
-        }
+        debugln("Timeout.. Resetting motors.");
+        ResetMotors();
     }
     else
     {
@@ -93,13 +90,15 @@ void odom_callback(const nav_msgs::Odometry& data)
 void cmd_vel_callback(const geometry_msgs::Twist& data)
 {
     last_motor_update = millis();
-
+    
     velocity_setpoint[0] = data.linear.x;
     velocity_setpoint[1] = data.linear.y;
     velocity_setpoint[2] = data.linear.z;
     velocity_setpoint[3] = data.angular.x;
     velocity_setpoint[4] = data.angular.y;
     velocity_setpoint[5] = data.angular.z;
+
+    debugln("Received Velocity Command.");
 }
 
 /* Motor value update callback
@@ -142,30 +141,40 @@ void setup()
 {
     Serial.begin(DEBUG_BAUDRATE);
     InitializeHardwareSerials();
-    debug("Initializing ROS\n", "s");
+    debugln("Initializing ROS");
     InitNode();
+    InitSubPub();
 
-    debug("Analog Read Resolution:" + String(ADC_READ_RESOLUTION_BIT) 
-        + String(" bits, range from 0-") + String(pow(2, ADC_READ_RESOLUTION_BIT)) + String("\n"), "s");
+    debugln("Analog Read Resolution:" + String(ADC_READ_RESOLUTION_BIT) 
+        + String(" bits, range from 0-") + String(pow(2, ADC_READ_RESOLUTION_BIT)));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
 
     InitMotors();
     InitializePeripheralPins();
-    InitializeIndicatorTimer(1);
     InitializeCurrentsMessage();
     // InitializePingSonarDevices();
     pinMode(USER_BTN, INPUT);
 
+    // INDICATE NO CONNECTION
+
     /* ********** HALT OPERATION ********** */
-    while (!nh.connected()) { nh.spinOnce(); }
-    debug("Connected to ROS...\n", "sr");
+    SwitchHaltMode();
+    // CONN SUCCESS. INDICATE GREEN..
+    debugln("Connected to ROS...");
     /* ********** HALT OPERATION ********** */
 
-    debug("Getting parameters...\n", "sr");
+
+    InitializeIndicatorTimer(1);
+
+    debugln("Getting parameters...");
     /* ********** GET PARAMETERS ********** */
+    nh.spinOnce();
     GetThrusterAllocationMatrix();
+    debugln("Got TAM.");
     GetPIDControllerParameters();
+    debugln("Got PID Gains.");
     UpdatePIDControllerGains();
+    debugln("Update PID Gains.");
     /* ********** GET PARAMETERS ********** */
 }
 
@@ -179,17 +188,18 @@ void loop()
     // {
     //     for (size_t j = 0; j < 8; j++)
     //     {
-    //         Serial.print(thruster_allocation[i][j]);
-    //         Serial.print(" ");
+    //         debug(thruster_allocation[i][j]);
+    //         debug(" ");
     //     }
-    //     Serial.println();
+    //     debugln("");
     // }
-    // Serial.println();
+    // debugln("");
 
-    SpinIndicatorTimer();
+    TimeoutDetector();
     PublishMotorCurrents(2);
-    delay(5);
+
     nh.spinOnce();
+    SwitchHaltMode();
 }
 
 // End of file. Copyright (c) 2019 ITU AUV Team / Electronics

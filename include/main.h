@@ -23,7 +23,7 @@
 
 
 // #define USE_ETHERNET
-#define DEBUG_PRINT
+// #define DEBUG_PRINT
 // #define ALLOW_DIRECT_CONTROL
 
 
@@ -33,6 +33,7 @@
 #include <motor_config.h>
 #include <error_codes.h>
 #include <params.h>
+#include <debugging.h>
 
 #if defined(USE_ETHERNET)
     #include <ros_ethernet.h>
@@ -67,12 +68,28 @@ void odom_callback(const nav_msgs::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 static void indicator_callback(stimer_t *htim);
+void InitNode();
+void InitSubPub();
+void GetThrusterAllocationMatrix();
+void GetPIDControllerParameters();
+void UpdatePIDControllerGains();
+void SwitchHaltMode();
+void InitMotors();
+void ResetMotors();
+void PublishInfo(String msg);
+void RunPIDControllers(double* output, double dt);
+void EvaluateCommand(String type, String content);
 void InitializeIndicatorTimer(uint32_t frequency);
 void SetFrequencyOfIndicatorTimer(uint32_t frequency);
+void TimeoutDetector();
 void InitializePeripheralPins();
-void PublishInfo(String msg);
-void EvaluateCommand(String type, String content);
+void InitializeHardwareSerials();
 void InitializePingSonarDevices();
+void PublishPingSonarMeasurements();
+void PublishMotorCurrents(int);
+void InitializeCurrentsMessage();
+
+
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -153,18 +170,18 @@ void InitNode()
     #if defined(USE_ETHERNET)
 
         #ifdef DEBUG_PRINT
-            Serial.println("Connecting to ROS via Ethernet interface.");
+            debugln("Connecting to ROS via Ethernet interface.");
         #endif
 
         Ethernet.begin(mac, ip);
 
         #ifdef DEBUG_PRINT
-            Serial.print("Current IP Address of this machine: ");
-            Serial.println(Ethernet.localIP());
-            Serial.print("IP Address of the machine running ROS: ");
-            Serial.println(server);
-            Serial.print("Ros Host port:");
-            Serial.println(serverPort);
+            debug("Current IP Address of this machine: ");
+            debugln(Ethernet.localIP());
+            debug("IP Address of the machine running ROS: ");
+            debugln(server);
+            debug("Ros Host port:");
+            debugln(serverPort);
         #endif
         
         delay(1000);
@@ -173,21 +190,21 @@ void InitNode()
         nh.initNode();
 
         #ifdef DEBUG_PRINT
-            Serial.println("Connection Successfull.");
+            debugln("Connection Successfull.");
         #endif
 
     #else
         #ifdef DEBUG_PRINT
-            Serial.println("Connecting to ROS via Serial interface.");
-            Serial.print("Baudrate of connection:");
-            Serial.println(ROS_BAUDRATE);
+            debugln("Connecting to ROS via Serial interface.");
+            debug("Baudrate of connection:");
+            debugln(ROS_BAUDRATE);
         #endif
 
         nh.getHardware()->setBaud(ROS_BAUDRATE);
         nh.initNode();
 
         #ifdef DEBUG_PRINT
-            Serial.println("Connection Successfull.");
+            debugln("Connection Successfull.");
         #endif
     #endif
 }
@@ -249,17 +266,31 @@ void UpdatePIDControllerGains()
     
 }
 
+void SwitchHaltMode()
+{
+    digitalWrite(LED_RED, HIGH);
+    while (!nh.connected()) { nh.spinOnce(); delay(1); }
+    digitalWrite(LED_RED, LOW);
+}
+
 /* Initialize and Attach motors to spesified pins.
  * Writes default MOTOR_PULSE_DEFAULT us pulse to motors.
  */
 void InitMotors()
 {
-    #ifdef DEBUG_PRINT
-        Serial.println("Initializing motor controllers with " + String(MOTOR_PULSE_DEFAULT) + " us pulse time.");
-    #endif
+    debugln("Initializing motor controllers with " + String(MOTOR_PULSE_DEFAULT) + " us pulse time.");
     for (size_t i = 0; i < 8; i++)
     {
         motors[i].attach(motor_pinmap[i]);
+        motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
+    }
+}
+
+void ResetMotors()
+{
+    debugln("Resetting Motors.");
+    for (size_t i = 0; i < 8; i++)
+    {
         motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
     }
 }
@@ -291,33 +322,13 @@ void RunPIDControllers(double* output, double dt)
     }
 }
 
-template<typename T>
-void debug(T msg, String type)
-{
-    #if defined(DEBUG_PRINT)
-    if (type == "s" || type == "sr" || type == "rs")
-        Serial.print(String(msg));
-    #endif
-
-    #if defined(DEBUG_LOG)
-    if (type == "r" || type == "sr" || type == "rs")
-        nh.logdebug(String(msg).c_str());
-    #endif
-}
- 
-template void debug(int, String);
-template void debug(float, String);
-template void debug(double, String);
-template void debug(char*, String);
-template void debug(String, String);
-
 void EvaluateCommand(String type, String content)
 {
     #ifdef DEBUG_PRINT
-        Serial.print("Received Command:");
-        Serial.print(type);
-        Serial.print(":");
-        Serial.println(content);
+        debug("Received Command:");
+        debug(type);
+        debug(":");
+        debugln(content);
     #endif
     if (String(type) == "pinmode_output")
     {
@@ -350,7 +361,6 @@ void EvaluateCommand(String type, String content)
     }
 }
 
-
 void InitializeIndicatorTimer(uint32_t frequency)
 {
     static stimer_t TimHandle;
@@ -373,7 +383,7 @@ void SetFrequencyOfIndicatorTimer(uint32_t frequency)
     INDICATOR_TIMER->CNT = 0;
 }
 
-void SpinIndicatorTimer()
+void TimeoutDetector()
 {
     bool state_change = (millis() - last_motor_update > MOTOR_TIMEOUT) ^ last_motor_timeout_state;
     last_motor_timeout_state = millis() - last_motor_update > MOTOR_TIMEOUT;
@@ -383,6 +393,8 @@ void SpinIndicatorTimer()
         if (last_motor_timeout_state == 1)
         {
             SetFrequencyOfIndicatorTimer(1);
+            ResetMotors();
+            ResetMotors();
         }
         else
         {
@@ -394,7 +406,7 @@ void SpinIndicatorTimer()
 void InitializePeripheralPins()
 {
     #ifdef DEBUG_PRINT
-        Serial.println("Setting up I/O Pins.");
+        debugln("Setting up I/O Pins.");
     #endif
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_RED, OUTPUT);
@@ -404,7 +416,7 @@ void InitializePeripheralPins()
 void InitializeHardwareSerials()
 {
     #ifdef DEBUG_PRINT
-        Serial.println("Setting up hardware serials.");
+        debugln("Setting up hardware serials.");
     #endif
     hwserial_3.begin(115200);
 }

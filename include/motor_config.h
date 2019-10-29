@@ -21,9 +21,13 @@
 // SOFTWARE.
 
 #define MOTOR_PULSE_RANGE                400 
-#define MOTOR_PULSE_DEFAULT              1500                                      // Default uS pulse time
-#define MOTOR_PULSE_MIN                  MOTOR_PULSE_DEFAULT - MOTOR_PULSE_RANGE   // Min uS pulse time
-#define MOTOR_PULSE_MAX                  MOTOR_PULSE_DEFAULT + MOTOR_PULSE_RANGE   // Max uS pulse time
+
+/* *** FOLLOWING 4 MACROS ARE DEFINED FOR BUILT-IN SERVO LIBRARY, 
+        AND IT OVERWRITES THE ONES DEFINED IN SERVO LIBRARY. *** */
+#define DEFAULT_PULSE_WIDTH              1500
+#define MIN_PULSE_WIDTH                  DEFAULT_PULSE_WIDTH - MOTOR_PULSE_RANGE   // Min uS pulse time
+#define MAX_PULSE_WIDTH                  DEFAULT_PULSE_WIDTH + MOTOR_PULSE_RANGE   // Max uS pulse time
+#define REFRESH_INTERVAL                 2040                                      // 1000000 / 490 = 2040 (default=20000)
 
 // const int motor_pinmap[8] = {PF8, PF0, PE5, PE3, PE2, PG3, PD6, PD3};
 
@@ -78,7 +82,7 @@ int get_pwm(double force, int direction)
     }
     else
     {
-        return MOTOR_PULSE_DEFAULT;
+        return DEFAULT_PULSE_WIDTH;
     }
     
 }

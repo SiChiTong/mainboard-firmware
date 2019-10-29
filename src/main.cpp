@@ -81,7 +81,7 @@ void odom_callback(const nav_msgs::Odometry& data)
         for (size_t i = 0; i < 8; i++)
         {
             int motor_pulse_us = get_pwm(thruster_vector[i], thruster_direction[i]);
-            motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
+            motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
             motors[i].writeMicroseconds(motor_pulse_us);
         }
     }
@@ -111,14 +111,16 @@ void motor_callback(const std_msgs::Int16MultiArray& data)
     {
         for (size_t i = 0; i < 8; i++)
         {
-            motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
+            motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
         }
     }
     last_motor_update = millis();
     for (size_t i = 0; i < 8; i++)
     {
         int motor_pulse_us = (int)data.data[i];
-        motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
+        // TODO: Remove constrain since the servo library already constrains data based on the 
+        // macros: MIN_PULSE_WIDTH, MAX_PULSE_WIDTH
+        motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
         motors[i].writeMicroseconds(motor_pulse_us);
     }
 }
@@ -128,14 +130,14 @@ void command_callback(const mainboard_firmware::Signal& data)
     EvaluateCommand(data.type, data.content);
 }
 
-static void indicator_callback(stimer_t *htim)
+static void indicator_callback(HardwareTimer* htim)
 {
-    UNUSED(htim);
+    // UNUSED(htim);
     digitalToggle(LED_BUILTIN);
 }
 
 /**
- * @brief Application rntry point.
+ * @brief Application entry point.
  */
 void setup()
 {
@@ -154,17 +156,15 @@ void setup()
     InitializeCurrentsMessage();
     // InitializePingSonarDevices();
     pinMode(USER_BTN, INPUT);
-
-    // INDICATE NO CONNECTION
+    
+    InitializeIndicatorTimer(1);
 
     /* ********** HALT OPERATION ********** */
-    SwitchHaltMode();
+    PerformHaltModeCheck();
     // CONN SUCCESS. INDICATE GREEN..
     debugln("Connected to ROS...");
     /* ********** HALT OPERATION ********** */
 
-
-    InitializeIndicatorTimer(1);
 
     debugln("Getting parameters...");
     /* ********** GET PARAMETERS ********** */
@@ -199,7 +199,7 @@ void loop()
     PublishMotorCurrents(2);
 
     nh.spinOnce();
-    SwitchHaltMode();
+    PerformHaltModeCheck();
 }
 
 // End of file. Copyright (c) 2019 ITU AUV Team / Electronics

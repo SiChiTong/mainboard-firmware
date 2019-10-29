@@ -21,15 +21,29 @@
 // SOFTWARE.
 
 
-
+/* DEPRECEATED, DO NOT USE ETHERNET MODE.
+ * Built in PlatformIO packages for ststm32
+ * and framework-arduinoststm32 have been updated
+ * to last version, and the last version does not 
+ * support s_timer types and TypeDefs, they've 
+ * implemented a new HardwareTimer class, 
+ * thus Stm32Ethernet library is no longer 
+ * working. 
+ * HardwareTimer Library: 
+ * https://github.com/stm32duino/wiki/wiki/HardwareTimer-library#Introduction
+ * 
+ * 
+ * Open Pull Request here: https://github.com/stm32duino/STM32Ethernet
+ */
 // #define USE_ETHERNET
-// #define DEBUG_PRINT
+#define DEBUG_PRINT
 // #define ALLOW_DIRECT_CONTROL
 
 
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
+#include <Servo.h>
 #include <motor_config.h>
 #include <error_codes.h>
 #include <params.h>
@@ -41,6 +55,7 @@
     #include <ros_serial.h>
 #endif
 
+#include <HardwareTimer.h>
 #include <ros.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float32.h>
@@ -51,7 +66,6 @@
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
-#include <Servo.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
 #include <ping1d.h>
@@ -67,20 +81,19 @@ void cmd_vel_callback(const geometry_msgs::Twist& data);
 void odom_callback(const nav_msgs::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
-static void indicator_callback(stimer_t *htim);
+static void indicator_callback(HardwareTimer* htim);
 void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
 void GetPIDControllerParameters();
 void UpdatePIDControllerGains();
-void SwitchHaltMode();
+void PerformHaltModeCheck();
 void InitMotors();
 void ResetMotors();
 void PublishInfo(String msg);
 void RunPIDControllers(double* output, double dt);
 void EvaluateCommand(String type, String content);
 void InitializeIndicatorTimer(uint32_t frequency);
-void SetFrequencyOfIndicatorTimer(uint32_t frequency);
 void TimeoutDetector();
 void InitializePeripheralPins();
 void InitializeHardwareSerials();
@@ -99,6 +112,10 @@ ros::NodeHandle nh;
 /* Motors define.
  */
 Servo motors[8];
+
+/* HardwareTimers
+ */
+HardwareTimer *IndicatorTimer;
 
 /* PING SONAR CONFIGURATION
  */
@@ -168,44 +185,33 @@ ros::Subscriber<nav_msgs::Odometry> odom_sub("/turquoise/odom", odom_callback);
 void InitNode()
 {
     #if defined(USE_ETHERNET)
-
-        #ifdef DEBUG_PRINT
-            debugln("Connecting to ROS via Ethernet interface.");
-        #endif
+        // DEPRECEATED, SEE LINE 24
+        debugln("Connecting to ROS via Ethernet interface.");
 
         Ethernet.begin(mac, ip);
 
-        #ifdef DEBUG_PRINT
-            debug("Current IP Address of this machine: ");
-            debugln(Ethernet.localIP());
-            debug("IP Address of the machine running ROS: ");
-            debugln(server);
-            debug("Ros Host port:");
-            debugln(serverPort);
-        #endif
+        debug("Current IP Address of this machine: ");
+        debugln(Ethernet.localIP());
+        debug("IP Address of the machine running ROS: ");
+        debugln(server);
+        debug("Ros Host port:");
+        debugln(serverPort);
         
         delay(1000);
 
         nh.getHardware()->setConnection(server, serverPort);
         nh.initNode();
 
-        #ifdef DEBUG_PRINT
-            debugln("Connection Successfull.");
-        #endif
+        debugln("Connection Successfull.");
 
     #else
-        #ifdef DEBUG_PRINT
-            debugln("Connecting to ROS via Serial interface.");
-            debug("Baudrate of connection:");
-            debugln(ROS_BAUDRATE);
-        #endif
-
+        debugln("Connecting to ROS via Serial interface.");
+        debug("Baudrate of connection:");
+        debugln(ROS_BAUDRATE);
         nh.getHardware()->setBaud(ROS_BAUDRATE);
         nh.initNode();
 
-        #ifdef DEBUG_PRINT
-            debugln("Connection Successfull.");
-        #endif
+        debugln("Connection Successfull.");
     #endif
 }
 
@@ -266,23 +272,39 @@ void UpdatePIDControllerGains()
     
 }
 
-void SwitchHaltMode()
+void PerformHaltModeCheck()
 {
+    // Connection is up, skip mode check.
+    if (nh.connected()) return;
+
+    debugln("Catched Halt Mode");
+    /* *** HALT MODE ON / LOST CONNECTION *** */
     digitalWrite(LED_RED, HIGH);
+    digitalWrite(LED_GREEN, LOW);
+    IndicatorTimer->pause();
+    /* *** HALT MODE ON / LOST CONNECTION *** */
+
     while (!nh.connected()) { nh.spinOnce(); delay(1); }
+
+    /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
+    IndicatorTimer->resume();
     digitalWrite(LED_RED, LOW);
+    debugln("Recovered from Halt Mode");
+
+    /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
+
 }
 
 /* Initialize and Attach motors to spesified pins.
- * Writes default MOTOR_PULSE_DEFAULT us pulse to motors.
+ * Writes default DEFAULT_PULSE_WIDTH us pulse to motors.
  */
 void InitMotors()
 {
-    debugln("Initializing motor controllers with " + String(MOTOR_PULSE_DEFAULT) + " us pulse time.");
+    debugln("Initializing motor controllers with " + String(DEFAULT_PULSE_WIDTH) + " us pulse time.");
     for (size_t i = 0; i < 8; i++)
     {
         motors[i].attach(motor_pinmap[i]);
-        motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
+        motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
     }
 }
 
@@ -291,10 +313,11 @@ void ResetMotors()
     debugln("Resetting Motors.");
     for (size_t i = 0; i < 8; i++)
     {
-        motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
+        motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
     }
 }
 
+// TODO: Depreceated ?
 void PublishInfo(String msg)
 {
     if (INFO_STREAM_ENABLE)
@@ -324,12 +347,10 @@ void RunPIDControllers(double* output, double dt)
 
 void EvaluateCommand(String type, String content)
 {
-    #ifdef DEBUG_PRINT
-        debug("Received Command:");
-        debug(type);
-        debug(":");
-        debugln(content);
-    #endif
+    debug("Received Command:");
+    debug(type);
+    debug(":");
+    debugln(content);
     if (String(type) == "pinmode_output")
     {
         int pin = String(content).toInt();
@@ -353,7 +374,7 @@ void EvaluateCommand(String type, String content)
     else if (String(type) == "change_indicator_freq")
     {
         int freq = String(content).toInt();
-        SetFrequencyOfIndicatorTimer(freq);
+        IndicatorTimer->setOverflow(freq, HERTZ_FORMAT); // 10 Hz
     }
     else
     {
@@ -361,28 +382,22 @@ void EvaluateCommand(String type, String content)
     }
 }
 
+/* Init, greed led indicator timer
+ */
 void InitializeIndicatorTimer(uint32_t frequency)
 {
-    static stimer_t TimHandle;
-    TimHandle.timer = INDICATOR_TIMER;
-
-    double prescaler = 20000;
-    double period = ( (getTimerClkFreq(INDICATOR_TIMER)) / (double)(prescaler+1) / frequency) - 1;
-
-    TimerHandleInit(&TimHandle, (uint32_t)period, (uint32_t)prescaler);
-
-    attachIntHandle(&TimHandle, indicator_callback);
+    IndicatorTimer = new HardwareTimer(INDICATOR_TIMER);
+    IndicatorTimer->setOverflow(frequency, HERTZ_FORMAT); // 10 Hz
+    IndicatorTimer->attachInterrupt(indicator_callback);
+    IndicatorTimer->resume();
 }
 
-void SetFrequencyOfIndicatorTimer(uint32_t frequency)
-{
-    double prescaler = 20000;
-    double period = ( (getTimerClkFreq(INDICATOR_TIMER)) / (double)(prescaler+1) / frequency) - 1;
-
-    INDICATOR_TIMER->ARR = (uint32_t)(period - 1);
-    INDICATOR_TIMER->CNT = 0;
-}
-
+/* Motor Timeout Detector
+ * Detects whether the timeout reached for the motor commands,
+ * thus disables (1500 us pulse) the motors to prevent vehicle
+ * from going crazy in case of network/connection loss. :)
+ * This is the savior of your billion dollar machine.
+ */
 void TimeoutDetector()
 {
     bool state_change = (millis() - last_motor_update > MOTOR_TIMEOUT) ^ last_motor_timeout_state;
@@ -392,22 +407,20 @@ void TimeoutDetector()
     {
         if (last_motor_timeout_state == 1)
         {
-            SetFrequencyOfIndicatorTimer(1);
+            IndicatorTimer->setOverflow(1, HERTZ_FORMAT); // 10 Hz
             ResetMotors();
             ResetMotors();
         }
         else
         {
-            SetFrequencyOfIndicatorTimer(10);
+            IndicatorTimer->setOverflow(10, HERTZ_FORMAT); // 10 Hz
         }
     }
 }
 
 void InitializePeripheralPins()
 {
-    #ifdef DEBUG_PRINT
-        debugln("Setting up I/O Pins.");
-    #endif
+    debugln("Setting up I/O Pins.");
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
@@ -415,9 +428,7 @@ void InitializePeripheralPins()
 
 void InitializeHardwareSerials()
 {
-    #ifdef DEBUG_PRINT
-        debugln("Setting up hardware serials.");
-    #endif
+    debugln("Setting up hardware serials.");
     hwserial_3.begin(115200);
 }
 

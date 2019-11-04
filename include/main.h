@@ -37,8 +37,7 @@
  */
 // #define USE_ETHERNET
 #define DEBUG_PRINT
-// #define ALLOW_DIRECT_CONTROL
-
+#define ALLOW_DIRECT_CONTROL
 
 
 /* *************************** Includes *************************** */
@@ -186,15 +185,15 @@ void InitNode()
 {
     #if defined(USE_ETHERNET)
         // DEPRECEATED, SEE LINE 24
-        debugln("Connecting to ROS via Ethernet interface.");
+        debugln("[ROS_CONN] ETHERNET_INTERFACE");
 
         Ethernet.begin(mac, ip);
 
-        debug("Current IP Address of this machine: ");
+        debug("[SELF_IP] ");
         debugln(Ethernet.localIP());
-        debug("IP Address of the machine running ROS: ");
+        debug("[HOST_IP] ");
         debugln(server);
-        debug("Ros Host port:");
+        debug("[HOST_PORT] ");
         debugln(serverPort);
         
         delay(1000);
@@ -202,16 +201,15 @@ void InitNode()
         nh.getHardware()->setConnection(server, serverPort);
         nh.initNode();
 
-        debugln("Connection Successfull.");
-
+        debugln("[ROS_CONN] NODE_INIT_OK!");
     #else
-        debugln("Connecting to ROS via Serial interface.");
-        debug("Baudrate of connection:");
+        debugln("[ROS_CONN] SERIAL_INTERFACE");
+        debug("[ROS_CONN] BAUD:");
         debugln(ROS_BAUDRATE);
         nh.getHardware()->setBaud(ROS_BAUDRATE);
         nh.initNode();
 
-        debugln("Connection Successfull.");
+        debugln("[ROS_CONN] NODE_INIT_OK!");
     #endif
 }
 
@@ -228,6 +226,7 @@ void InitSubPub()
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
     nh.subscribe(odom_sub);
+    debug("[PUB_SUB_INIT]");
 }
 
 void GetThrusterAllocationMatrix()
@@ -277,7 +276,7 @@ void PerformHaltModeCheck()
     // Connection is up, skip mode check.
     if (nh.connected()) return;
 
-    debugln("Catched Halt Mode");
+    debugln("[HALT_MODE] ON! (Possible Disconnection)");
     /* *** HALT MODE ON / LOST CONNECTION *** */
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, LOW);
@@ -289,7 +288,7 @@ void PerformHaltModeCheck()
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
     IndicatorTimer->resume();
     digitalWrite(LED_RED, LOW);
-    debugln("Recovered from Halt Mode");
+    debugln("[HALT_MODE] OFF! (Normal Operation)");
 
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
 
@@ -300,17 +299,17 @@ void PerformHaltModeCheck()
  */
 void InitMotors()
 {
-    debugln("Initializing motor controllers with " + String(DEFAULT_PULSE_WIDTH) + " us pulse time.");
+    debugln("[MOTOR_INIT] " + String(DEFAULT_PULSE_WIDTH) + " uS PULSE");
     for (size_t i = 0; i < 8; i++)
     {
-        motors[i].attach(motor_pinmap[i]);
+        while (!motors[i].attached()) { motors[i].attach(motor_pinmap[i]); } 
         motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
     }
 }
 
 void ResetMotors()
 {
-    debugln("Resetting Motors.");
+    debugln("[MOTOR_RESET]");
     for (size_t i = 0; i < 8; i++)
     {
         motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
@@ -347,10 +346,8 @@ void RunPIDControllers(double* output, double dt)
 
 void EvaluateCommand(String type, String content)
 {
-    debug("Received Command:");
-    debug(type);
-    debug(":");
-    debugln(content);
+    debug("[COMMAND_RECV] -> [" + type + ":" + content + "]");
+
     if (String(type) == "pinmode_output")
     {
         int pin = String(content).toInt();
@@ -390,6 +387,7 @@ void InitializeIndicatorTimer(uint32_t frequency)
     IndicatorTimer->setOverflow(frequency, HERTZ_FORMAT); // 10 Hz
     IndicatorTimer->attachInterrupt(indicator_callback);
     IndicatorTimer->resume();
+    debugln("[INDICATOR_LED_TIMER_INIT]");
 }
 
 /* Motor Timeout Detector
@@ -420,7 +418,7 @@ void TimeoutDetector()
 
 void InitializePeripheralPins()
 {
-    debugln("Setting up I/O Pins.");
+    debugln("[I/O_PINMODE]");
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
@@ -428,7 +426,7 @@ void InitializePeripheralPins()
 
 void InitializeHardwareSerials()
 {
-    debugln("Setting up hardware serials.");
+    debugln("[HW_SERIAL_INIT]");
     hwserial_3.begin(115200);
 }
 
@@ -478,11 +476,13 @@ void PublishMotorCurrents(int readings_count=5)
         double current_ma = 1000.0 * (voltage_mv - 2500.0) / ACS712_30A_SENS_MV_PER_AMP;
         current_msg.data[i] = (float)current_ma - ADC_OFFSET_CURRENT_ERROR;
     }
+    debugln("[PUB] CURRENT_SENS");
     motor_currents.publish(&current_msg);
 }
 
 void InitializeCurrentsMessage()
 {
+    debugln("[CURRENT_SENS_MSG_INIT]");
     current_msg.layout.dim = (std_msgs::MultiArrayDimension *)
     malloc(sizeof(std_msgs::MultiArrayDimension) * 2);
     current_msg.layout.dim[0].label = "motor_currents";

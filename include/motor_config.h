@@ -27,7 +27,7 @@
 #define DEFAULT_PULSE_WIDTH              1500
 #define MIN_PULSE_WIDTH                  DEFAULT_PULSE_WIDTH - MOTOR_PULSE_RANGE   // Min uS pulse time
 #define MAX_PULSE_WIDTH                  DEFAULT_PULSE_WIDTH + MOTOR_PULSE_RANGE   // Max uS pulse time
-#define REFRESH_INTERVAL                 2040                                      // 1000000 / 490 = 2040 (default=20000)
+// #define REFRESH_INTERVAL                 2040                                      // 1000000 / 490 = 2040 (default=20000)
 
 // const int motor_pinmap[8] = {PF8, PF0, PE5, PE3, PE2, PG3, PD6, PD3};
 

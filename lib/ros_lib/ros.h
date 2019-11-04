@@ -57,6 +57,10 @@ namespace ros
 
   typedef NodeHandle_<ArduinoHardware, 10, 10, 2048, 2048> NodeHandle;
 
+#elif defined(USE_STM32_HW_SERIAL) or defined(STM32ETHERNET)
+
+  typedef NodeHandle_<ArduinoHardware, 25, 25, 2048, 2048> NodeHandle;
+
 #else
 
   typedef NodeHandle_<ArduinoHardware> NodeHandle; // default 25, 25, 512, 512

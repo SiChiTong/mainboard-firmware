@@ -24,6 +24,7 @@
 
 void odom_callback(const nav_msgs::Odometry& data)
 {
+    debugln("[ODOMETRY] TIMESTAMP " + String(data.header.stamp.toSec()));
     n[0] = data.pose.pose.position.x;
     n[1] = data.pose.pose.position.y;
     n[2] = data.pose.pose.position.z;
@@ -48,7 +49,7 @@ void odom_callback(const nav_msgs::Odometry& data)
     
     // PID CONTROLLER OUTPUT TO THRUSTER CONFIGURATION
     
-    float thruster_vector[8];
+    float thrust_vector[8];
     float sum = 0;
 
     for (size_t i = 0; i < 8; i++)
@@ -58,32 +59,24 @@ void odom_callback(const nav_msgs::Odometry& data)
         {
             sum += controller_output[j] * thruster_allocation[j][i];
         }
-        thruster_vector[i] = sum;
+        thrust_vector[i] = sum;
     }
 
-    debug("Calculated thruster vector:");
+    debug("[THRUST_VECTOR]");
+
     for (size_t i = 0; i < 8; i++)
     {
-        debug(thruster_vector[i]);
+        debug(thrust_vector[i]);
         debug(" ");
     }
     debugln("");
 
-    if (millis() - last_motor_update > MOTOR_TIMEOUT)
+    // NORMAL-OPERATION
+    for (size_t i = 0; i < 8; i++)
     {
-        // TIMEOUT
-        debugln("Timeout.. Resetting motors.");
-        ResetMotors();
-    }
-    else
-    {
-        // NORMAL-OPERATION
-        for (size_t i = 0; i < 8; i++)
-        {
-            int motor_pulse_us = get_pwm(thruster_vector[i], thruster_direction[i]);
-            motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
-            motors[i].writeMicroseconds(motor_pulse_us);
-        }
+        int motor_pulse_us = get_pwm(thrust_vector[i], thruster_direction[i]);
+        motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+        motors[i].writeMicroseconds(motor_pulse_us);
     }
 }
 
@@ -98,7 +91,14 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
     velocity_setpoint[4] = data.angular.y;
     velocity_setpoint[5] = data.angular.z;
 
-    debugln("Received Velocity Command.");
+    debug("[CMD_VEL] [" + String(millis()) + "]");
+    for (size_t i = 0; i < 6; i++)
+    {
+        debug(velocity_setpoint[i]);
+        debug(" ");
+    }
+    debugln("");
+
 }
 
 /* Motor value update callback
@@ -107,13 +107,7 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
  */
 void motor_callback(const std_msgs::Int16MultiArray& data)
 {
-    if (millis() - last_motor_update > MOTOR_TIMEOUT)
-    {
-        for (size_t i = 0; i < 8; i++)
-        {
-            motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
-        }
-    }
+    debugln("[MOTOR_DIRECT] [" + String(millis()) + "]");
     last_motor_update = millis();
     for (size_t i = 0; i < 8; i++)
     {
@@ -132,7 +126,7 @@ void command_callback(const mainboard_firmware::Signal& data)
 
 static void indicator_callback(HardwareTimer* htim)
 {
-    // UNUSED(htim);
+    UNUSED(htim);
     digitalToggle(LED_BUILTIN);
 }
 
@@ -143,12 +137,11 @@ void setup()
 {
     Serial.begin(DEBUG_BAUDRATE);
     InitializeHardwareSerials();
-    debugln("Initializing ROS");
+    debugln("[ROS_INIT]");
     InitNode();
     InitSubPub();
 
-    debugln("Analog Read Resolution:" + String(ADC_READ_RESOLUTION_BIT) 
-        + String(" bits, range from 0-") + String(pow(2, ADC_READ_RESOLUTION_BIT)));
+    debugln("[ADC_RES]: " + String(ADC_READ_RESOLUTION_BIT));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
 
     InitMotors();
@@ -162,39 +155,26 @@ void setup()
     /* ********** HALT OPERATION ********** */
     PerformHaltModeCheck();
     // CONN SUCCESS. INDICATE GREEN..
-    debugln("Connected to ROS...");
+    debugln("[ROS_CONN] OK!");
     /* ********** HALT OPERATION ********** */
 
 
-    debugln("Getting parameters...");
+    debugln("[REQUEST_PARAMS]");
     /* ********** GET PARAMETERS ********** */
     nh.spinOnce();
     GetThrusterAllocationMatrix();
-    debugln("Got TAM.");
+    debugln("[PARAM_OK] TAM");
     GetPIDControllerParameters();
-    debugln("Got PID Gains.");
+    debugln("[PARAM_OK] PID_GAINS");
     UpdatePIDControllerGains();
-    debugln("Update PID Gains.");
+    debugln("[UPDATE_PID_GAINS]");
     /* ********** GET PARAMETERS ********** */
+
+    debugln("[MAIN_LOOP_START]");
 }
 
 void loop()
 {
-    // for (size_t i = 0; i < 4; i++) {
-    //     PublishPingSonarMeasurements();
-    // }
-    // PublishPingSonarMeasurements();
-    // for (size_t i = 0; i < 6; i++)
-    // {
-    //     for (size_t j = 0; j < 8; j++)
-    //     {
-    //         debug(thruster_allocation[i][j]);
-    //         debug(" ");
-    //     }
-    //     debugln("");
-    // }
-    // debugln("");
-
     TimeoutDetector();
     PublishMotorCurrents(2);
 

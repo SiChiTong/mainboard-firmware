@@ -30,7 +30,7 @@
 #define ADC_READ_MAX_VOLTAGE             3300.0                    // 12 bits for analog read resolution max 3.3V
 #define ADC_OFFSET_CURRENT_ERROR         800.0                     // 800 mA offset error.
 
-#define INDICATOR_TIMER                  TIM7                      // Timer instance of indicator Led. (LED_GREEN)
+#define INDICATOR_TIMER                  TIM8                      // Timer instance of indicator Led. (LED_GREEN)
 
 #define PING_PULSE_TIME                  5
 #define PING_TIMEOUT                     50

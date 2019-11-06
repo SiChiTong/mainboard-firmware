@@ -34,6 +34,6 @@
 
 #define PING_PULSE_TIME                  5
 #define PING_TIMEOUT                     50
-#define ROS_BAUDRATE                     57600                     // Ros Communication Baud Rate
+#define ROS_BAUDRATE                     115200                     // Ros Communication Baud Rate
 #define DEBUG_BAUDRATE                   57600                     // Default Serial port baud rate. (For DEBUG use.)
 #define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.

@@ -22,31 +22,40 @@
 
 #include <main.h>
 
-void odom_callback(const nav_msgs::Odometry& data)
+void odometry_callback(const mainboard_firmware::Odometry& data)
 {
-    debugln("[ODOMETRY] TIMESTAMP " + String(data.header.stamp.toSec()));
-    n[0] = data.pose.pose.position.x;
-    n[1] = data.pose.pose.position.y;
-    n[2] = data.pose.pose.position.z;
-    geometry_msgs::Vector3 euler = EulerFromQuaternion(data.pose.pose.orientation);
+    debugln("[ODOMETRY]      " + String(millis()));
+    n[0] = data.pose.position.x;
+    n[1] = data.pose.position.y;
+    n[2] = data.pose.position.z;
+    geometry_msgs::Vector3 euler = EulerFromQuaternion(data.pose.orientation);
     n[3] = euler.x;
     n[4] = euler.y;
     n[5] = euler.z;
 
-    v[0] = data.twist.twist.linear.x;
-    v[1] = data.twist.twist.linear.y;
-    v[2] = data.twist.twist.linear.z;
+    v[0] = data.twist.linear.x;
+    v[1] = data.twist.linear.y;
+    v[2] = data.twist.linear.z;
 
-    v[3] = data.twist.twist.angular.x;
-    v[4] = data.twist.twist.angular.y;
-    v[5] = data.twist.twist.angular.z;
+    v[3] = data.twist.angular.x;
+    v[4] = data.twist.angular.y;
+    v[5] = data.twist.angular.z;
 
     unsigned long dt = millis() - last_odom_update;
     last_odom_update += dt;
     
     double controller_output[6];
     RunPIDControllers(controller_output, dt);
-    
+
+    debug("[PID_CONTROLLER]");
+
+    for (size_t i = 0; i < 6; i++)
+    {
+        debug(controller_output[i]);
+        debug(" ");
+    }
+    debugln("");
+
     // PID CONTROLLER OUTPUT TO THRUSTER CONFIGURATION
     
     float thrust_vector[8];
@@ -62,7 +71,7 @@ void odom_callback(const nav_msgs::Odometry& data)
         thrust_vector[i] = sum;
     }
 
-    debug("[THRUST_VECTOR]");
+    debug("[THRUST_VECTOR] ");
 
     for (size_t i = 0; i < 8; i++)
     {
@@ -91,7 +100,7 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
     velocity_setpoint[4] = data.angular.y;
     velocity_setpoint[5] = data.angular.z;
 
-    debug("[CMD_VEL] [" + String(millis()) + "]");
+    debug("[CMD_VEL] [" + String(millis()) + "] ");
     for (size_t i = 0; i < 6; i++)
     {
         debug(velocity_setpoint[i]);
@@ -175,8 +184,12 @@ void setup()
 
 void loop()
 {
+    // mainboard_firmware::Odometry odom_msg;
+    // odometry_callback(odom_msg);
+
+    PerformUARTControl();
     TimeoutDetector();
-    PublishMotorCurrents(2);
+    // PublishMotorCurrents(2);
 
     nh.spinOnce();
     PerformHaltModeCheck();

@@ -63,7 +63,8 @@
 #include <std_msgs/MultiArrayDimension.h>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Twist.h>
-#include <nav_msgs/Odometry.h>
+// #include <nav_msgs/Odometry.h>
+#include <mainboard_firmware/Odometry.h>
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
@@ -77,7 +78,7 @@
 
 /* *************************** Callbacks *************************** */
 void cmd_vel_callback(const geometry_msgs::Twist& data);
-void odom_callback(const nav_msgs::Odometry& data);
+void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 static void indicator_callback(HardwareTimer* htim);
@@ -163,8 +164,6 @@ sensor_msgs::Range range_msg;
 /**
  * @brief Publishers
  */
-ros::Publisher diagnose_info("/turquoise/board/diagnose/info", &info_msg);
-ros::Publisher diagnose_error("/turquoise/board/diagnose/error", &error_msg);
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
 
@@ -172,11 +171,12 @@ ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
  * @brief Subscribers
  */
 #if defined(ALLOW_DIRECT_CONTROL)
-ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", motor_callback);
+ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", &motor_callback);
 #endif
-ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", command_callback);
-ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", cmd_vel_callback);
-ros::Subscriber<nav_msgs::Odometry> odom_sub("/turquoise/odom", odom_callback);
+ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &command_callback);
+// ros::Subscriber<mainboard_firmware::Odometry> odom_subscriber("/turquoise/odom", odometry_callback);
+ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
+ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 
 /* *************************** Functions *************************** */
 /* Initialize NodeHandle with ethernet or serial
@@ -213,19 +213,33 @@ void InitNode()
     #endif
 }
 
+void PerformUARTControl()
+{
+    while (Serial.available())
+    {
+        String value = Serial.readStringUntil('\n');
+        last_motor_update = millis();
+        for (size_t i = 0; i < 8; i++)
+        {
+            motors[i].writeMicroseconds(value.toInt());
+        }
+    }
+}
+
 void InitSubPub()
 {
-    nh.advertise(diagnose_error);
-    nh.advertise(diagnose_info);
     nh.advertise(motor_currents);
     nh.advertise(ping_1_pub);
 
     #if defined(ALLOW_DIRECT_CONTROL)
     nh.subscribe(motor_subs);
     #endif
+    nh.subscribe(odom_subb);
+    
+    // FIXME: Does this lines effect odom callback ?
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
-    nh.subscribe(odom_sub);
+
     debug("[PUB_SUB_INIT]");
 }
 
@@ -281,6 +295,7 @@ void PerformHaltModeCheck()
     digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, LOW);
     IndicatorTimer->pause();
+    ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
 
     while (!nh.connected()) { nh.spinOnce(); delay(1); }
@@ -316,30 +331,19 @@ void ResetMotors()
     }
 }
 
-// TODO: Depreceated ?
-void PublishInfo(String msg)
-{
-    if (INFO_STREAM_ENABLE)
-    {
-        info_msg.data = msg.c_str();
-        diagnose_info.publish(&info_msg);
-        info_msg.data = "";
-    }
-}
-
-void RunPIDControllers(double* output, double dt)
+void RunPIDControllers(double* output, unsigned long dt)
 {
     for (size_t i = 0; i < 6; i++)
     {
         if (i == 3 || i == 4)
         {
             // Roll and Pitch Controllers are position controller.
-            controllers[i].run(0.0, n[i], dt);
+            output[i] = controllers[i].run(0.0, n[i], dt);
         }
         else
         {
             // Others follow cmd_vel topic.
-            controllers[i].run(velocity_setpoint[i], v[i], dt);
+            output[i] = controllers[i].run(velocity_setpoint[i], v[i], dt);
         }
     }
 }

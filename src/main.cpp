@@ -20,7 +20,95 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "main.h"
+#include <main.h>
+
+void odometry_callback(const mainboard_firmware::Odometry& data)
+{
+    debugln("[ODOMETRY]      " + String(millis()));
+    n[0] = data.pose.position.x;
+    n[1] = data.pose.position.y;
+    n[2] = data.pose.position.z;
+    geometry_msgs::Vector3 euler = EulerFromQuaternion(data.pose.orientation);
+    n[3] = euler.x;
+    n[4] = euler.y;
+    n[5] = euler.z;
+
+    v[0] = data.twist.linear.x;
+    v[1] = data.twist.linear.y;
+    v[2] = data.twist.linear.z;
+
+    v[3] = data.twist.angular.x;
+    v[4] = data.twist.angular.y;
+    v[5] = data.twist.angular.z;
+
+    unsigned long dt = millis() - last_odom_update;
+    last_odom_update += dt;
+    
+    double controller_output[6];
+    RunPIDControllers(controller_output, dt);
+
+    debug("[PID_CONTROLLER]");
+
+    for (size_t i = 0; i < 6; i++)
+    {
+        debug(controller_output[i]);
+        debug(" ");
+    }
+    debugln("");
+
+    // PID CONTROLLER OUTPUT TO THRUSTER CONFIGURATION
+    
+    float thrust_vector[8];
+    float sum = 0;
+
+    for (size_t i = 0; i < 8; i++)
+    {
+        sum = 0;
+        for (size_t j = 0; j < 6; j++)
+        {
+            sum += controller_output[j] * thruster_allocation[j][i];
+        }
+        thrust_vector[i] = sum;
+    }
+
+    debug("[THRUST_VECTOR] ");
+
+    for (size_t i = 0; i < 8; i++)
+    {
+        debug(thrust_vector[i]);
+        debug(" ");
+    }
+    debugln("");
+
+    // NORMAL-OPERATION
+    for (size_t i = 0; i < 8; i++)
+    {
+        int motor_pulse_us = get_pwm(thrust_vector[i], thruster_direction[i]);
+        motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+        motors[i].writeMicroseconds(motor_pulse_us);
+    }
+}
+
+void cmd_vel_callback(const geometry_msgs::Twist& data)
+{
+    last_motor_update = millis();
+    
+    velocity_setpoint[0] = data.linear.x;
+    velocity_setpoint[1] = data.linear.y;
+    velocity_setpoint[2] = data.linear.z;
+    velocity_setpoint[3] = data.angular.x;
+    velocity_setpoint[4] = data.angular.y;
+    velocity_setpoint[5] = data.angular.z;
+
+    debug("[CMD_VEL] [" + String(millis()) + "] ");
+    for (size_t i = 0; i < 6; i++)
+    {
+        debug(velocity_setpoint[i]);
+        debug(" ");
+    }
+    debugln("");
+
+}
 
 /* Motor value update callback
  * If this callback isn't fired in MOTOR_TIMEOUT milliseconds after the last one,
@@ -28,18 +116,14 @@
  */
 void motor_callback(const std_msgs::Int16MultiArray& data)
 {
-    if (millis() - last_motor_update > MOTOR_TIMEOUT)
-    {
-        for (size_t i = 0; i < 8; i++)
-        {
-            motors[i].writeMicroseconds(MOTOR_PULSE_DEFAULT);
-        }
-    }
+    debugln("[MOTOR_DIRECT] [" + String(millis()) + "]");
     last_motor_update = millis();
     for (size_t i = 0; i < 8; i++)
     {
         int motor_pulse_us = (int)data.data[i];
-        motor_pulse_us = constrain(motor_pulse_us, MOTOR_PULSE_MIN, MOTOR_PULSE_MAX);
+        // TODO: Remove constrain since the servo library already constrains data based on the 
+        // macros: MIN_PULSE_WIDTH, MAX_PULSE_WIDTH
+        motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
         motors[i].writeMicroseconds(motor_pulse_us);
     }
 }
@@ -49,46 +133,66 @@ void command_callback(const mainboard_firmware::Signal& data)
     EvaluateCommand(data.type, data.content);
 }
 
-static void indicator_callback(stimer_t *htim)
+static void indicator_callback(HardwareTimer* htim)
 {
     UNUSED(htim);
     digitalToggle(LED_BUILTIN);
 }
 
+/**
+ * @brief Application entry point.
+ */
 void setup()
 {
     Serial.begin(DEBUG_BAUDRATE);
     InitializeHardwareSerials();
+    debugln("[ROS_INIT]");
     InitNode();
+    InitSubPub();
 
-    nh.advertise(diagnose_error);
-    nh.advertise(diagnose_info);
-
-    nh.advertise(motor_currents);
-    nh.advertise(ping_1_pub);
-
-    nh.subscribe(motor_subs);
-    nh.subscribe(command_sub);
-
+    debugln("[ADC_RES]: " + String(ADC_READ_RESOLUTION_BIT));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
 
     InitMotors();
     InitializePeripheralPins();
-    InitializeIndicatorTimer(1);
     InitializeCurrentsMessage();
     // InitializePingSonarDevices();
     pinMode(USER_BTN, INPUT);
+    
+    InitializeIndicatorTimer(1);
+
+    /* ********** HALT OPERATION ********** */
+    PerformHaltModeCheck();
+    // CONN SUCCESS. INDICATE GREEN..
+    debugln("[ROS_CONN] OK!");
+    /* ********** HALT OPERATION ********** */
+
+
+    debugln("[REQUEST_PARAMS]");
+    /* ********** GET PARAMETERS ********** */
+    nh.spinOnce();
+    GetThrusterAllocationMatrix();
+    debugln("[PARAM_OK] TAM");
+    GetPIDControllerParameters();
+    debugln("[PARAM_OK] PID_GAINS");
+    UpdatePIDControllerGains();
+    debugln("[UPDATE_PID_GAINS]");
+    /* ********** GET PARAMETERS ********** */
+
+    debugln("[MAIN_LOOP_START]");
 }
 
 void loop()
 {
-    // for (size_t i = 0; i < 4; i++) {
-    //     PublishPingSonarMeasurements();
-    // }
-    // PublishPingSonarMeasurements();
+    // mainboard_firmware::Odometry odom_msg;
+    // odometry_callback(odom_msg);
 
-    SpinIndicatorTimer();
-    PublishMotorCurrents(2);
-    delay(5);
+    PerformUARTControl();
+    TimeoutDetector();
+    // PublishMotorCurrents(2);
+
     nh.spinOnce();
+    PerformHaltModeCheck();
 }
+
+// End of file. Copyright (c) 2019 ITU AUV Team / Electronics

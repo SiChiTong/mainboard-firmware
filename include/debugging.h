@@ -20,9 +20,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define XAVIER_RX                        PD2 //PD6     // NUCLEO-F429ZI UART2-RX
-#define XAVIER_TX                        PC12 //PD5     // NUCLEO-F429ZI UART2-TX
-#include <HardwareSerial.h>
-HardwareSerial XavierSerial(XAVIER_RX, XAVIER_TX);
-#define Serial1 XavierSerial
-#define USE_STM32_HW_SERIAL
+#include <Arduino.h>
+
+template<typename T>
+void debug(T msg)
+{
+    #if defined(DEBUG_PRINT)
+    Serial.print(String(msg));
+    #endif
+
+    // #if defined(DEBUG_LOG)
+    // nh.logdebug(String(msg).c_str());
+    // #endif
+}
+template<typename T>
+void debugln(T msg)
+{
+    #if defined(DEBUG_PRINT)
+    Serial.println(String(msg));
+    #endif
+
+    // #if defined(DEBUG_LOG)
+    // nh.logdebug(String(msg).c_str());
+    // #endif
+}
+template void debug(int);
+template void debug(float);
+template void debug(double);
+template void debug(char*);
+template void debug(String);
+
+template void debugln(int);
+template void debugln(float);
+template void debugln(double);
+template void debugln(char*);
+template void debugln(String);

@@ -133,10 +133,26 @@ void command_callback(const mainboard_firmware::Signal& data)
     EvaluateCommand(data.type, data.content);
 }
 
-static void indicator_callback(HardwareTimer* htim)
+static void HardwareTimer_Callback(HardwareTimer* htim)
 {
-    UNUSED(htim);
-    digitalToggle(LED_BUILTIN);
+    if (htim == IndicatorTimer)
+    {
+        digitalToggle(LED_BUILTIN);
+    }
+    else if (htim == CurrentCounterTimer)
+    {
+        main_voltage = (double)analogRead(VOLTAGE_SENS_PIN) *
+         ((double)VOLTAGE_SENS_MAX_VOLTS / (double)ADC_READ_MAX_VALUE);
+        
+        main_current = (double)analogRead(CURRENT_SENS_PIN) *
+         ((double)CURRENT_SENS_MAX_AMPS / (double)ADC_READ_MAX_VALUE);
+        
+        current_consumption_mah -= (double)CURRENT_COUNT_INTERVAL * main_current;
+    }
+    else
+    {
+        UNUSED(htim);
+    }
 }
 
 /**
@@ -152,7 +168,7 @@ void setup()
 
     debugln("[ADC_RES]: " + String(ADC_READ_RESOLUTION_BIT));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
-
+    InitializeCurrentCounterTimer();
     InitMotors();
     InitializePeripheralPins();
     InitializeCurrentsMessage();

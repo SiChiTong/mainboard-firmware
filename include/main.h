@@ -81,7 +81,7 @@ void cmd_vel_callback(const geometry_msgs::Twist& data);
 void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
-static void indicator_callback(HardwareTimer* htim);
+static void HardwareTimer_Callback(HardwareTimer* htim);
 void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
@@ -116,7 +116,7 @@ Servo motors[8];
 /* HardwareTimers
  */
 HardwareTimer *IndicatorTimer;
-
+HardwareTimer *CurrentCounterTimer;
 /* PING SONAR CONFIGURATION
  */
 HardwareSerial hwserial_3(PD2, PC12);
@@ -133,6 +133,9 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
  */
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
+double current_consumption_mah = 0;
+double main_current = 0;
+double main_voltage = 0;
 
 /**
  * @brief PID Controllers
@@ -389,9 +392,18 @@ void InitializeIndicatorTimer(uint32_t frequency)
 {
     IndicatorTimer = new HardwareTimer(INDICATOR_TIMER);
     IndicatorTimer->setOverflow(frequency, HERTZ_FORMAT); // 10 Hz
-    IndicatorTimer->attachInterrupt(indicator_callback);
+    IndicatorTimer->attachInterrupt(HardwareTimer_Callback);
     IndicatorTimer->resume();
     debugln("[INDICATOR_LED_TIMER_INIT]");
+}
+
+void InitializeCurrentCounterTimer()
+{
+    CurrentCounterTimer = new HardwareTimer(CURRENT_COUNT_TIMER);
+    CurrentCounterTimer->setOverflow(CURRENT_COUNT_INTERVAL * 1000000.0 , MICROSEC_FORMAT); 
+    CurrentCounterTimer->attachInterrupt(HardwareTimer_Callback);
+    CurrentCounterTimer->resume();
+    debugln("[CURRENT_COUNTING_TIMER_INIT]");
 }
 
 /* Motor Timeout Detector

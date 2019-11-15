@@ -141,11 +141,9 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
     }
     else if (htim == CurrentCounterTimer)
     {
-        main_voltage = (double)analogRead(VOLTAGE_SENS_PIN) *
-         ((double)VOLTAGE_SENS_MAX_VOLTS / (double)ADC_READ_MAX_VALUE);
-        
-        main_current = (double)analogRead(CURRENT_SENS_PIN) *
-         ((double)CURRENT_SENS_MAX_AMPS / (double)ADC_READ_MAX_VALUE);
+        main_voltage = (double)analogRead(VOLTAGE_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO;
+
+        main_current = (double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO;
         
         current_consumption_mah -= (double)CURRENT_COUNT_INTERVAL * main_current;
     }
@@ -206,7 +204,6 @@ void loop()
     PerformUARTControl();
     TimeoutDetector();
     // PublishMotorCurrents(2);
-
     nh.spinOnce();
     PerformHaltModeCheck();
 }

@@ -126,6 +126,7 @@ static Ping1D ping_1 { hwserial_3 };
  * currently, mainboard does not support such features
  * therefore these features are not tested yet.
  */
+
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
 int aux_pinmap[3] = {PD12, PD13, PD14};
 
@@ -438,6 +439,8 @@ void InitializePeripheralPins()
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
+    pinMode(CURRENT_SENS_PIN, INPUT);
+    pinMode(VOLTAGE_SENS_PIN, INPUT);
 }
 
 void InitializeHardwareSerials()

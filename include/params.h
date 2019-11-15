@@ -41,12 +41,12 @@
  */
 #define CURRENT_COUNT_TIMER              TIM9                      // Timer instance of current count. Reads current
 #define CURRENT_COUNT_INTERVAL           0.1                       // time in seconds between each measurement. (100 ms)
-#define CURRENT_SENS_PIN                 A2                        // ADC Pin.
+#define CURRENT_SENS_PIN                 PC2                       // ADC Pin.
 #define CURRENT_SENS_MAX_AMPS            60.0                      // Max measurable amps for sensor.
-#define VOLTAGE_SENS_PIN                 A1                        // ADC Pin.
+#define VOLTAGE_SENS_PIN                 PB1                       // ADC Pin.
 #define VOLTAGE_SENS_MAX_VOLTS           18.0                      // 4S Max.
-#define ADC_TO_VOLTAGE_RATIO             0.00815976                // Module parameter
-#define ADC_TO_CURRENT_RATIO             0.01383244                // Module parameter
+#define ADC_TO_VOLTAGE_RATIO             0.0085                    // Module parameter
+#define ADC_TO_CURRENT_RATIO             0.0137134308511           // Module parameter
 
 /* **************** APM Common Power Module (CPM) **************** */
 

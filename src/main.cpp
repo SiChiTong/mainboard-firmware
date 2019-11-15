@@ -143,7 +143,7 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
     {
         main_voltage = (double)analogRead(VOLTAGE_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO;
 
-        main_current = (double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO;
+        main_current = (double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_CURRENT_RATIO;
         
         current_consumption_mah -= (double)CURRENT_COUNT_INTERVAL * main_current;
     }
@@ -198,9 +198,7 @@ void setup()
 
 void loop()
 {
-    // mainboard_firmware::Odometry odom_msg;
-    // odometry_callback(odom_msg);
-    PublishBatteryState(main_voltage, main_current);
+    PublishBatteryState();
     PerformUARTControl();
     TimeoutDetector();
     // PublishMotorCurrents(2);

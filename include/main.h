@@ -68,6 +68,7 @@
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
+#include <sensor_msgs/BatteryState.h>
 #include <ping1d.h>
 #include <transformations.h>
 
@@ -467,11 +468,18 @@ void InitializePingSonarDevices()
 }
 
 
-void PublishBatteryState(double voltage_value, double current_value)
+void PublishBatteryState()
 {
-    battery_msg.voltage = voltage_value;
-    battery_msg.current = current_value;
-    battery_state.publish(battery_msg);
+
+    // debug("[MAIN_VOLTAGE]");
+    // debugln(main_voltage);
+
+    // debug("[MAIN_CURRENT]");
+    // debugln(main_current);
+
+    battery_msg.voltage = main_voltage;
+    battery_msg.current = -main_current;
+    battery_state.publish(&battery_msg);
 }
 
 

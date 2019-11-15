@@ -164,12 +164,14 @@ std_msgs::String info_msg;
 std_msgs::String error_msg;
 std_msgs::Float32MultiArray current_msg;
 sensor_msgs::Range range_msg;
+sensor_msgs::BatteryState battery_msg;
 
 /**
  * @brief Publishers
  */
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
+ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
 
 /**
  * @brief Subscribers
@@ -234,6 +236,7 @@ void InitSubPub()
 {
     nh.advertise(motor_currents);
     nh.advertise(ping_1_pub);
+    nh.advertise(battery_state);
 
     #if defined(ALLOW_DIRECT_CONTROL)
     nh.subscribe(motor_subs);
@@ -462,6 +465,15 @@ void InitializePingSonarDevices()
 
     if (!init_state) nh.logerror(String("PRM_ERR:" + String(PING_SONAR_INIT_FAILED)).c_str());
 }
+
+
+void PublishBatteryState(double voltage_value, double current_value)
+{
+    battery_msg.voltage = voltage_value;
+    battery_msg.current = current_value;
+    battery_state.publish(battery_msg);
+}
+
 
 void PublishPingSonarMeasurements()
 {

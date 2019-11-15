@@ -200,7 +200,7 @@ void loop()
 {
     // mainboard_firmware::Odometry odom_msg;
     // odometry_callback(odom_msg);
-
+    PublishBatteryState(main_voltage, main_current);
     PerformUARTControl();
     TimeoutDetector();
     // PublishMotorCurrents(2);

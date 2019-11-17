@@ -68,6 +68,7 @@
 #include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
+#include <sensor_msgs/BatteryState.h>
 #include <ping1d.h>
 #include <transformations.h>
 
@@ -81,7 +82,7 @@ void cmd_vel_callback(const geometry_msgs::Twist& data);
 void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
-static void indicator_callback(HardwareTimer* htim);
+static void HardwareTimer_Callback(HardwareTimer* htim);
 void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
@@ -116,7 +117,7 @@ Servo motors[8];
 /* HardwareTimers
  */
 HardwareTimer *IndicatorTimer;
-
+HardwareTimer *CurrentCounterTimer;
 /* PING SONAR CONFIGURATION
  */
 HardwareSerial hwserial_3(PD2, PC12);
@@ -126,6 +127,7 @@ static Ping1D ping_1 { hwserial_3 };
  * currently, mainboard does not support such features
  * therefore these features are not tested yet.
  */
+
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
 int aux_pinmap[3] = {PD12, PD13, PD14};
 
@@ -133,6 +135,9 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
  */
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
+double current_consumption_mah = 0;
+double main_current = 0;
+double main_voltage = 0;
 
 /**
  * @brief PID Controllers
@@ -160,12 +165,14 @@ std_msgs::String info_msg;
 std_msgs::String error_msg;
 std_msgs::Float32MultiArray current_msg;
 sensor_msgs::Range range_msg;
+sensor_msgs::BatteryState battery_msg;
 
 /**
  * @brief Publishers
  */
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
+ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
 
 /**
  * @brief Subscribers
@@ -230,6 +237,7 @@ void InitSubPub()
 {
     nh.advertise(motor_currents);
     nh.advertise(ping_1_pub);
+    nh.advertise(battery_state);
 
     #if defined(ALLOW_DIRECT_CONTROL)
     nh.subscribe(motor_subs);
@@ -389,9 +397,18 @@ void InitializeIndicatorTimer(uint32_t frequency)
 {
     IndicatorTimer = new HardwareTimer(INDICATOR_TIMER);
     IndicatorTimer->setOverflow(frequency, HERTZ_FORMAT); // 10 Hz
-    IndicatorTimer->attachInterrupt(indicator_callback);
+    IndicatorTimer->attachInterrupt(HardwareTimer_Callback);
     IndicatorTimer->resume();
     debugln("[INDICATOR_LED_TIMER_INIT]");
+}
+
+void InitializeCurrentCounterTimer()
+{
+    CurrentCounterTimer = new HardwareTimer(CURRENT_COUNT_TIMER);
+    CurrentCounterTimer->setOverflow(CURRENT_COUNT_INTERVAL * 1000000.0 , MICROSEC_FORMAT); 
+    CurrentCounterTimer->attachInterrupt(HardwareTimer_Callback);
+    CurrentCounterTimer->resume();
+    debugln("[CURRENT_COUNTING_TIMER_INIT]");
 }
 
 /* Motor Timeout Detector
@@ -426,6 +443,8 @@ void InitializePeripheralPins()
     pinMode(LED_GREEN, OUTPUT);
     pinMode(LED_RED, OUTPUT);
     pinMode(LED_BLUE, OUTPUT);
+    pinMode(CURRENT_SENS_PIN, INPUT);
+    pinMode(VOLTAGE_SENS_PIN, INPUT);
 }
 
 void InitializeHardwareSerials()
@@ -447,6 +466,22 @@ void InitializePingSonarDevices()
 
     if (!init_state) nh.logerror(String("PRM_ERR:" + String(PING_SONAR_INIT_FAILED)).c_str());
 }
+
+
+void PublishBatteryState()
+{
+
+    // debug("[MAIN_VOLTAGE]");
+    // debugln(main_voltage);
+
+    // debug("[MAIN_CURRENT]");
+    // debugln(main_current);
+
+    battery_msg.voltage = main_voltage;
+    battery_msg.current = -main_current;
+    battery_state.publish(&battery_msg);
+}
+
 
 void PublishPingSonarMeasurements()
 {

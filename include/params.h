@@ -47,12 +47,13 @@
 #define VOLTAGE_SENS_MAX_VOLTS           18.0                      // 4S Max.
 #define ADC_TO_VOLTAGE_RATIO             0.0085                    // Module parameter
 #define ADC_TO_CURRENT_RATIO             0.0137134308511           // Module parameter
-
+#define MIN_BATT_VOLTAGE                 9.0                       // 3S Batt Min voltage
+#define LOW_BATT_VOLTAGE                 9.5                       // Low Voltage warning.
 /* **************** APM Common Power Module (CPM) **************** */
 
 
 #define PING_PULSE_TIME                  5
-#define PING_TIMEOUT                     50
+#define PING_TIMEOUT                     1000
 #define ROS_BAUDRATE                     115200                    // Ros Communication Baud Rate
 #define DEBUG_BAUDRATE                   57600                     // Default Serial port baud rate. (For DEBUG use.)
 #define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.

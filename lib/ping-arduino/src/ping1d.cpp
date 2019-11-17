@@ -91,6 +91,32 @@ PingMessage* Ping1D::waitMessage(enum Ping1DNamespace::msg_ping1D_id id, uint16_
     return nullptr;
 }
 
+PingMessage* Ping1D::checkMessage(enum Ping1DNamespace::msg_ping1D_id id)
+{
+
+    PingMessage* pmsg = read();
+
+    if (!pmsg) {
+        return nullptr;
+    }
+
+    handleMessage(pmsg);
+
+    if (pmsg->message_id() == Ping1DNamespace::Nack) {
+        ping_msg_ping1D_nack nack(*pmsg);
+
+        if (nack.nacked_id() == id) {
+            return nullptr;
+        }
+    }
+
+    if (pmsg->message_id() == id) {
+        _active_request = false;
+        _last_updated = millis();
+        return pmsg;
+    }
+}
+
 void Ping1D::handleMessage(PingMessage* pmsg)
 {
     switch (pmsg->message_id()) {
@@ -261,6 +287,29 @@ PingMessage* Ping1D::request(enum Ping1DNamespace::msg_ping1D_id id, uint16_t ti
     msg.updateChecksum();
     write(msg.msgData, msg.msgDataLength());
     return waitMessage(id, timeout_ms);
+}
+
+bool Ping1D::isRequestPending()
+{
+    // Check if the timeout has expired, if so set _active_request to false
+    // Else, leave as it is.
+    _active_request &= !(millis() - _last_updated > _timeout);
+    return _active_request;
+}
+
+bool Ping1D::requestOnly(enum Ping1DNamespace::msg_ping1D_id id)
+{
+    if (!isRequestPending())
+    {
+        ping_msg_ping1D_empty msg;
+        msg.set_id(id);
+        msg.updateChecksum();
+        write(msg.msgData, msg.msgDataLength());
+        _active_request = true;
+        _last_updated = millis();
+        return true;
+    }
+    return false;
 }
 
 // ex auto msg = pd.request<ping_msg_ping1D_voltage_5>();

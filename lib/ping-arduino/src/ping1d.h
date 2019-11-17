@@ -57,6 +57,32 @@ public:
      */
     PingMessage* request(enum Ping1DNamespace::msg_ping1D_id id, uint16_t timeout_ms = 500);
 
+    /**
+     * @brief Checks if the _active_request is pending, 
+     * if not sends a request and sets the _active_request to true
+     * @param id 
+     * @return true if the request is sent.
+     * @return false if a request is already pending, not sent.
+     */
+    bool requestOnly(enum Ping1DNamespace::msg_ping1D_id id);
+
+    /**
+     * @brief returns _active_request, whether a request
+     * has already sent and waiting for response.
+     * @return true 
+     * @return false 
+     */
+    bool isRequestPending();
+
+    void set_timeout(uint32_t timeout_ms) { _timeout = timeout_ms; }
+    
+    uint32_t get_timeout() { return _timeout; } 
+
+    Stream* getStream() { return &_stream; }
+
+    bool getStreamAvailable() {return _stream.available(); } 
+
+    PingMessage* checkMessage(enum Ping1DNamespace::msg_ping1D_id id);
 
     /**
      *  @brief Request a PingMessage of type T from the device
@@ -343,6 +369,12 @@ private:
     // The protocol version
     uint32_t _protocol_version = 0;
 
+    // Whether an active request is pending
+    bool _active_request = false;
+
+    uint32_t _last_updated = millis();
+
+    uint32_t _timeout = 50;
 
     /**
      *  @brief Read in data from device, return a PingMessage if available.

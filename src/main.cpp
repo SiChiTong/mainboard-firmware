@@ -81,11 +81,14 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
     debugln("");
 
     // NORMAL-OPERATION
-    for (size_t i = 0; i < 8; i++)
+    if (motor_armed)
     {
-        int motor_pulse_us = get_pwm(thrust_vector[i], thruster_direction[i]);
-        motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
-        motors[i].writeMicroseconds(motor_pulse_us);
+        for (size_t i = 0; i < 8; i++)
+        {
+            int motor_pulse_us = get_pwm(thrust_vector[i], thruster_direction[i]);
+            motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+            motors[i].writeMicroseconds(motor_pulse_us);
+        }
     }
 }
 
@@ -118,14 +121,18 @@ void motor_callback(const std_msgs::Int16MultiArray& data)
 {
     debugln("[MOTOR_DIRECT] [" + String(millis()) + "]");
     last_motor_update = millis();
-    for (size_t i = 0; i < 8; i++)
+    if (motor_armed)
     {
-        int motor_pulse_us = (int)data.data[i];
-        // TODO: Remove constrain since the servo library already constrains data based on the 
-        // macros: MIN_PULSE_WIDTH, MAX_PULSE_WIDTH
-        motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
-        motors[i].writeMicroseconds(motor_pulse_us);
+        for (size_t i = 0; i < 8; i++)
+        {
+            int motor_pulse_us = (int)data.data[i];
+            // TODO: Remove constrain since the servo library already constrains data based on the 
+            // macros: MIN_PULSE_WIDTH, MAX_PULSE_WIDTH
+            motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+            motors[i].writeMicroseconds(motor_pulse_us);
+        }
     }
+
 }
 
 void command_callback(const mainboard_firmware::Signal& data)
@@ -147,6 +154,13 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
         
         current_consumption_mah -= (double)CURRENT_COUNT_INTERVAL * main_current;
     }
+    else if (htim == PingSonarTimer)
+    {
+        if (bottom_sonar.isRequestPending())
+        {
+            bottom_sonar.checkMessage(Ping1DNamespace::Distance_simple);
+        }
+    }
     else
     {
         UNUSED(htim);
@@ -166,15 +180,15 @@ void setup()
 
     debugln("[ADC_RES]: " + String(ADC_READ_RESOLUTION_BIT));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
-    InitializeCurrentCounterTimer();
     InitMotors();
     InitializePeripheralPins();
     InitializeCurrentsMessage();
-    // InitializePingSonarDevices();
+    InitializeBatteryStateMsg();
+    InitializePingSonarDevices();
     pinMode(USER_BTN, INPUT);
     
     InitializeIndicatorTimer(1);
-
+    InitializeTimers();
     /* ********** HALT OPERATION ********** */
     PerformHaltModeCheck();
     // CONN SUCCESS. INDICATE GREEN..
@@ -193,6 +207,7 @@ void setup()
     debugln("[UPDATE_PID_GAINS]");
     /* ********** GET PARAMETERS ********** */
 
+    LogStartUpInfo();
     debugln("[MAIN_LOOP_START]");
 }
 
@@ -200,10 +215,11 @@ void loop()
 {
     PublishBatteryState();
     PerformUARTControl();
-    TimeoutDetector();
+    HandlePingSonarRequests();
+
     // PublishMotorCurrents(2);
     nh.spinOnce();
-    PerformHaltModeCheck();
+    SystemWatchdog();
 }
 
 // End of file. Copyright (c) 2019 ITU AUV Team / Electronics

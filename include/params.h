@@ -20,6 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <Arduino.h>
+
 #define INFO_STREAM_ENABLE               true                      // Set Info Steaming enabled to topic.
 
 #define ACS712_30A_SENS_MV_PER_AMP       66.0                      // 66 mV per 1.A
@@ -32,8 +34,25 @@
 
 #define INDICATOR_TIMER                  TIM8                      // Timer instance of indicator Led. (LED_GREEN)
 
+/* **************** APM Common Power Module (CPM) **************** */
+/**
+ * Refer Link:
+ * http://ardupilot.org/copter/docs/common-3dr-power-module.html
+ */
+#define CURRENT_COUNT_TIMER              TIM9                      // Timer instance of current count. Reads current
+#define CURRENT_COUNT_INTERVAL           0.1                       // time in seconds between each measurement. (100 ms)
+#define CURRENT_SENS_PIN                 PC2                       // ADC Pin.
+#define CURRENT_SENS_MAX_AMPS            60.0                      // Max measurable amps for sensor.
+#define VOLTAGE_SENS_PIN                 PB1                       // ADC Pin.
+#define VOLTAGE_SENS_MAX_VOLTS           18.0                      // 4S Max.
+#define ADC_TO_VOLTAGE_RATIO             0.0085                    // Module parameter
+#define ADC_TO_CURRENT_RATIO             0.0137134308511           // Module parameter
+
+/* **************** APM Common Power Module (CPM) **************** */
+
+
 #define PING_PULSE_TIME                  5
 #define PING_TIMEOUT                     50
-#define ROS_BAUDRATE                     115200                     // Ros Communication Baud Rate
+#define ROS_BAUDRATE                     115200                    // Ros Communication Baud Rate
 #define DEBUG_BAUDRATE                   57600                     // Default Serial port baud rate. (For DEBUG use.)
 #define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.

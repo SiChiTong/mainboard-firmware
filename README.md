@@ -10,6 +10,7 @@ The source code is released under [MIT License](LICENSE).
 
 ### Authors & Maintainers
 **Author:** Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
+
 **Maintainers:** ITU Auv Electronics Sub-Team
 
 ### Working Environment

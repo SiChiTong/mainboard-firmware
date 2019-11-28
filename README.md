@@ -9,9 +9,15 @@ This repository is a source code of the firmware that is to be uploaded on Nucle
 The source code is released under [MIT License](LICENSE).
 
 ### Authors & Maintainers
-**Author:** Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
 
-**Maintainers:** ITU Auv Electronics Sub-Team
+**Authors:** 
+- Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
+
+**Maintainers:** 
+- Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
+- Enes Demirag, [enesdemirag1@gmail.com](mailto:enesdemirag1@gmail.com)
+- Rusen Kuscuoglu, [rusenkuscuoglu@hotmail.com](mailto:rusenkuscuoglu@hotmail.com)
+- ITU Auv Electronics Sub-Team
 
 ### Working Environment
 This repository consists packages of different platforms in a single folder. As a ros package, mainboard_firmware package is used with Ubuntu 18.04 and [ROS]() Melodic. As a PlatformIO development package, it is used and developed with latest PlatformIO in VSCode. In order to function as a package for both platforms, [platformio.ini](platformio.ini) and [package.xml](package.xml) files must be kept.

@@ -22,8 +22,6 @@
 
 #include <Arduino.h>
 
-#define INFO_STREAM_ENABLE               true                      // Set Info Steaming enabled to topic.
-
 #define ACS712_30A_SENS_MV_PER_AMP       66.0                      // 66 mV per 1.A
 #define ACS712_20A_SENS_MV_PER_AMP       100.0                     // 100 mV per 1.A
 
@@ -52,7 +50,6 @@
 /* **************** APM Common Power Module (CPM) **************** */
 
 
-#define PING_PULSE_TIME                  5
 #define PING_TIMEOUT                     1000
 #define ROS_BAUDRATE                     115200                    // Ros Communication Baud Rate
 #define DEBUG_BAUDRATE                   57600                     // Default Serial port baud rate. (For DEBUG use.)

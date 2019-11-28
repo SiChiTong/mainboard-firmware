@@ -55,10 +55,10 @@ After flashing the board, to establish the connection to the microcontroller:
 
 ## Config files
 
-* **default.yaml** Contains the configuration parameters for Microcontroller, PID and Thruster Allocation Matrix is provided here.
+* **[default.yaml](config/default.yaml)** Contains the configuration parameters for Microcontroller, PID and Thruster Allocation Matrix is provided here.
 
 ## Launch files
-The main launch files will be named as start_<PLATFORM>, where the platform may be OS X, Jetson, Ubuntu etc.
+The main launch files will be named as start_<PLATFORM>, where the platform may be OS X, Jetson, Ubuntu etc under [launch/](launch/) folder.
 
 * **start_jetson.launch:** Starts the necessary nodes to connect to the microcontroller and other features.
 
@@ -99,7 +99,8 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
 	The Signal messages that can control some features of the Microcontroller in real-time.
     List of signals that can be used:
-    | Signal Type   | Signal Content| Description |
+
+    | Signal Type   | Signal Content | Description |
     |---|---|---|
     | pinmode_output| PIN_NUMBER | Registers the provided pin with PIN_NUMBER as output pin. |
     | digital_set | PIN_NUMBER | Sets the provided pin (HIGH) |
@@ -124,6 +125,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
 
 - [main.h](include/main.h)
+
     | MACRO | DESCRIPTION |
     |--|--|
     | ALLOW_DIRECT_CONTROL | Enables the feature of direct motor control from the topics when defined | 
@@ -131,12 +133,14 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | DEBUG_PRINT |  Enables the ping sonars when defined | 
 
 - [ros_ethernet.h](include/ros_ethernet.h)
+
     | MACRO | DESCRIPTION |
     |--|--|
     | STM32ETHERNET | Defined to initialize ros.h with ethernet connection of STM32 | 
     | ROSSERIAL_ARDUINO_TCP | Defined to initialize ros.h with TCP communication mode | 
 
 - [ros_serial.h](include/ros_serial.h)
+
     | MACRO | DESCRIPTION |
     |--|--|
     | USE_STM32_HW_SERIAL | Defined to initialize ros.h with Hardware Serial communication mode | 
@@ -198,6 +202,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 ##### Firmware Parameters
 
 - [params.h](include/params.h)
+
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
     | ACS712_30A_SENS_MV_PER_AMP | 66.0 | mV / A| 66 mV per 1.A | 
@@ -223,6 +228,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | MOTOR_TIMEOUT | 400 | ms | the max time between each motor cmd allowed |
 
 - [motor_config.h](include/motor_config.h)
+
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
     | MOTOR_PULSE_RANGE | 400 | uS | the range of motor pulse starting from 1500 uS | 
@@ -237,6 +243,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | NEG_FIT_P3 | 1460 | unit | Value of c in, a\*s^2 + b\*s + c for Thrust-PWM Curve Fit |
 
 - [ros_serial.h](include/ros_serial.h)
+
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
     | XAVIER_RX | PD2 | Pin | Rx Pin used to connect to the ROS Computer |

@@ -20,8 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define XAVIER_RX                        PD2 //PD6     // NUCLEO-F429ZI UART2-RX
-#define XAVIER_TX                        PC12 //PD5     // NUCLEO-F429ZI UART2-TX
+#define XAVIER_RX                        PD2
+#define XAVIER_TX                        PC12
 #include <HardwareSerial.h>
 HardwareSerial XavierSerial(XAVIER_RX, XAVIER_TX);
 #define Serial1 XavierSerial

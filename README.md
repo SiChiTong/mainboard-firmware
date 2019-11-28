@@ -71,7 +71,7 @@ The main launch files will be named as start_<PLATFORM>, where the platform may 
 
      Connection Argument
 
-     - **`connection_type`** port and baud rate argument. Default: `/dev/ttyTHS0 _baud:=115200`.
+     - **`connection_type`** port and baud rate argument. Default: `/dev/ttyTHS1 _baud:=115200`.
 
 * **start_osx.launch:** Starts the necessary nodes to connect to the microcontroller and other features.
 

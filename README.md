@@ -6,14 +6,14 @@ This repository is a source code of the firmware that is to be uploaded on Nucle
 
 ### License
 
-The source code is released under [MIT License](mainboard-firmware/LICENSE).
+The source code is released under [MIT License](LICENSE).
 
 ### Authors & Maintainers
 **Author:** Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
 **Maintainers:** ITU Auv Electronics Sub-Team
 
 ### Working Environment
-This repository consists packages of different platforms in a single folder. As a ros package, mainboard_firmware package is used with Ubuntu 18.04 and [ROS] Melodic. As a PlatformIO development package, it is used and developed with latest PlatformIO in VSCode. In order to function as a package for both platforms, [platformio.ini](mainboard-firmware/platformio.ini) and [package.xml](mainboard-firmware/package.xml) files must be kept.
+This repository consists packages of different platforms in a single folder. As a ros package, mainboard_firmware package is used with Ubuntu 18.04 and [ROS]() Melodic. As a PlatformIO development package, it is used and developed with latest PlatformIO in VSCode. In order to function as a package for both platforms, [platformio.ini](platformio.ini) and [package.xml](package.xml) files must be kept.
 
 
 ## Connection & Hardware
@@ -31,10 +31,10 @@ As a microcontroller ST Nucleo F429ZI is used.
 #### Dependencies
 
 - [Robot Operating System (ROS)](http://wiki.ros.org)
-- [PlatformIO] 
+- [PlatformIO]() 
     Install VSCode (or supported editors), and install PlatformIO extension.
-- [AutoPID], [ping-arduino]
-    Provided under [lib/](mainboard-firmware/lib)
+- [AutoPID](), [ping-arduino]()
+    Provided under [lib/](lib/)
 
 #### Building
 
@@ -81,21 +81,21 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
 #### Published Topics
 
-* **`/turquoise/sensors/sonar/bottom`** ([sensor_msgs/Range])
+* **`/turquoise/sensors/sonar/bottom`** ([sensor_msgs/Range]())
 
-	The range measurements computed from the bottom ping sonar ([ping-1d]) from BlueRobotics.
+	The range measurements computed from the bottom ping sonar ([ping-1d]()) from BlueRobotics.
 
-* **`/turquoise/battery_state`** ([sensor_msgs/BatteryState])
+* **`/turquoise/battery_state`** ([sensor_msgs/BatteryState]())
 
 	The necessary information of battery and real time voltage and current readings.
 
-* **`/turquoise/thrusters/current`** ([std_msgs/Float32MultiArray])
+* **`/turquoise/thrusters/current`** ([std_msgs/Float32MultiArray]())
 
 	The current readings in amperes (A) computed from the current sensors located on board for each thruster.
 
 #### Subscribed Topics
 
-* **`/turquoise/signal`** ([mainboard_firmware/Signal])
+* **`/turquoise/signal`** ([mainboard_firmware/Signal]())
 
 	The Signal messages that can control some features of the Microcontroller in real-time.
     List of signals that can be used:
@@ -107,15 +107,15 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | digital_toggle | PIN_NUMBER | Toggles the provided pin |
     | change_indicator_freq | FREQUENCY| Changes the flasing rate of the indicator led. |
 
-* **`/turquoise/cmd_vel`** ([geometry_msgs/Twist])
+* **`/turquoise/cmd_vel`** ([geometry_msgs/Twist]())
 
 	The velocity references for each axis, Linear X,Y,Z and Rotational X,Y,Z that are used to command the vehicle. A minimum frequency of 2.5 Hz must be provided in order to work without timeout (time > 400 ms). If messages are sent with time > 400 ms, the motors would stop after each reference.
 
-* **`/turquoise/odom`** ([mainboard_firmware/Odometry])
+* **`/turquoise/odom`** ([mainboard_firmware/Odometry]())
 
-	The odometry of the vehicle, generated from [nav_msgs/Odometry] message, excluding the covariances since it makes the communication unstable due to long message.
+	The odometry of the vehicle, generated from [nav_msgs/Odometry]() message, excluding the covariances since it makes the communication unstable due to long message.
 
-* **`/turquoise/thrusters/input`** ([std_msgs/Int16MultiArray])
+* **`/turquoise/thrusters/input`** ([std_msgs/Int16MultiArray]())
 
 	Directly controls each motor with given PWM signals (not thrust). The range of \[1100 - 1900\] is allowed. ALLOW_DIRECT_CONTROL Macro must be defined on the firmware, in order for this option to work.
 
@@ -123,20 +123,20 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 #### Macro's
 
 
-- [main.h](mainboard-firmware/include/main.h)
+- [main.h](include/main.h)
     | MACRO | DESCRIPTION |
     |--|--|
     | ALLOW_DIRECT_CONTROL | Enables the feature of direct motor control from the topics when defined | 
     | ENABLE_SONARS | Enables the ping sonars when defined | 
     | DEBUG_PRINT |  Enables the ping sonars when defined | 
 
-- [ros_ethernet.h](mainboard-firmware/include/ros_ethernet.h)
+- [ros_ethernet.h](include/ros_ethernet.h)
     | MACRO | DESCRIPTION |
     |--|--|
     | STM32ETHERNET | Defined to initialize ros.h with ethernet connection of STM32 | 
     | ROSSERIAL_ARDUINO_TCP | Defined to initialize ros.h with TCP communication mode | 
 
-- [ros_serial.h](mainboard-firmware/include/ros_serial.h)
+- [ros_serial.h](include/ros_serial.h)
     | MACRO | DESCRIPTION |
     |--|--|
     | USE_STM32_HW_SERIAL | Defined to initialize ros.h with Hardware Serial communication mode | 
@@ -197,7 +197,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
 ##### Firmware Parameters
 
-- [params.h](mainboard-firmware/include/params.h)
+- [params.h](include/params.h)
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
     | ACS712_30A_SENS_MV_PER_AMP | 66.0 | mV / A| 66 mV per 1.A | 
@@ -222,7 +222,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | DEBUG_BAUDRATE | 57600 | bits / second (bps) | Default Serial port baud rate. (For DEBUG use.) |
     | MOTOR_TIMEOUT | 400 | ms | the max time between each motor cmd allowed |
 
-- [motor_config.h](mainboard-firmware/include/motor_config.h)
+- [motor_config.h](include/motor_config.h)
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
     | MOTOR_PULSE_RANGE | 400 | uS | the range of motor pulse starting from 1500 uS | 
@@ -236,7 +236,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | NEG_FIT_P2 | 32.1 | unit | Value of b in, a\*s^2 + b\*s + c for Thrust-PWM Curve Fit |
     | NEG_FIT_P3 | 1460 | unit | Value of c in, a\*s^2 + b\*s + c for Thrust-PWM Curve Fit |
 
-- [ros_serial.h](mainboard-firmware/include/ros_serial.h)
+- [ros_serial.h](include/ros_serial.h)
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
     | XAVIER_RX | PD2 | Pin | Rx Pin used to connect to the ROS Computer |
@@ -244,4 +244,4 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
 ## Bugs & Feature Requests
 
-Please report bugs and request features using the [Issue Tracker](https://gitlab.com/itu-auv/electronics/mainboard-firmware/issues).
+Please report bugs and request features using the [Issue Tracker](https://gitlab.com/itu-auv/electronics/issues).

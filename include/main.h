@@ -38,7 +38,7 @@
 // #define USE_ETHERNET
 #define DEBUG_PRINT
 #define ALLOW_DIRECT_CONTROL
-
+#define ENABLE_SONARS
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
@@ -56,6 +56,7 @@
 
 #include <HardwareTimer.h>
 #include <ros.h>
+#include <ros/time.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Int16MultiArray.h>
@@ -95,13 +96,14 @@ void PublishInfo(String msg);
 void RunPIDControllers(double* output, double dt);
 void EvaluateCommand(String type, String content);
 void InitializeIndicatorTimer(uint32_t frequency);
-void TimeoutDetector();
+bool TimeoutDetector();
 void InitializePeripheralPins();
 void InitializeHardwareSerials();
 void InitializePingSonarDevices();
 void PublishPingSonarMeasurements();
 void PublishMotorCurrents(int);
 void InitializeCurrentsMessage();
+bool CheckBattery();
 
 
 
@@ -118,10 +120,11 @@ Servo motors[8];
  */
 HardwareTimer *IndicatorTimer;
 HardwareTimer *CurrentCounterTimer;
+HardwareTimer *PingSonarTimer;
 /* PING SONAR CONFIGURATION
  */
-HardwareSerial hwserial_3(PD2, PC12);
-static Ping1D ping_1 { hwserial_3 };
+HardwareSerial hwserial_3 = HardwareSerial(PE7, PE8);
+static Ping1D bottom_sonar { hwserial_3 };
 
 /* This section includes pinmaps for current sensors and auxilary channel pinmaps
  * currently, mainboard does not support such features
@@ -138,6 +141,7 @@ bool last_motor_timeout_state = false;  //motor disabled
 double current_consumption_mah = 0;
 double main_current = 0;
 double main_voltage = 0;
+bool motor_armed = false;
 
 /**
  * @brief PID Controllers
@@ -171,7 +175,7 @@ sensor_msgs::BatteryState battery_msg;
  * @brief Publishers
  */
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
-ros::Publisher ping_1_pub("/turquoise/sensors/sonar/front", &range_msg);
+ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
 
 /**
@@ -236,7 +240,12 @@ void PerformUARTControl()
 void InitSubPub()
 {
     nh.advertise(motor_currents);
-    nh.advertise(ping_1_pub);
+
+    /* *** Sonar Publishers *** */
+    #if defined(ENABLE_SONARS)
+    nh.advertise(bottom_sonar_pub);
+    #endif
+    
     nh.advertise(battery_state);
 
     #if defined(ALLOW_DIRECT_CONTROL)
@@ -248,7 +257,7 @@ void InitSubPub()
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
 
-    debug("[PUB_SUB_INIT]");
+    debugln("[PUB_SUB_INIT]");
 }
 
 void GetThrusterAllocationMatrix()
@@ -297,20 +306,27 @@ void PerformHaltModeCheck()
 {
     // Connection is up, skip mode check.
     if (nh.connected()) return;
+    bool last_motor_armed = motor_armed;
 
+    motor_armed = false;
     debugln("[HALT_MODE] ON! (Possible Disconnection)");
     /* *** HALT MODE ON / LOST CONNECTION *** */
-    digitalWrite(LED_RED, HIGH);
     digitalWrite(LED_GREEN, LOW);
+    digitalWrite(LED_BLUE, LOW);
     IndicatorTimer->pause();
+    ResetMotors();
     ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
 
-    while (!nh.connected()) { nh.spinOnce(); delay(1); }
+    while (!nh.connected()) {
+        nh.spinOnce(); 
+        delay(50); 
+        digitalWrite(LED_RED, main_voltage < MIN_BATT_VOLTAGE);
+    }
 
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
+    motor_armed = last_motor_armed;
     IndicatorTimer->resume();
-    digitalWrite(LED_RED, LOW);
     debugln("[HALT_MODE] OFF! (Normal Operation)");
 
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
@@ -347,6 +363,11 @@ void RunPIDControllers(double* output, unsigned long dt)
         {
             // Roll and Pitch Controllers are position controller.
             output[i] = controllers[i].run(0.0, n[i], dt);
+        }
+        // TEMP: This is for Z depth control, only using Ping sonar for now.
+        else if (i == 2)
+        {
+             output[i] = controllers[i].run(velocity_setpoint[i], bottom_sonar.distance() / 1000.0, dt);
         }
         else
         {
@@ -402,13 +423,21 @@ void InitializeIndicatorTimer(uint32_t frequency)
     debugln("[INDICATOR_LED_TIMER_INIT]");
 }
 
-void InitializeCurrentCounterTimer()
+void InitializeTimers()
 {
     CurrentCounterTimer = new HardwareTimer(CURRENT_COUNT_TIMER);
     CurrentCounterTimer->setOverflow(CURRENT_COUNT_INTERVAL * 1000000.0 , MICROSEC_FORMAT); 
     CurrentCounterTimer->attachInterrupt(HardwareTimer_Callback);
     CurrentCounterTimer->resume();
     debugln("[CURRENT_COUNTING_TIMER_INIT]");
+
+    #if defined(ENABLE_SONARS)
+    PingSonarTimer = new HardwareTimer(TIM11);
+    PingSonarTimer->setOverflow(1000.0, MICROSEC_FORMAT); 
+    PingSonarTimer->attachInterrupt(HardwareTimer_Callback);
+    PingSonarTimer->resume();
+    debugln("[CURRENT_COUNTING_TIMER_INIT]");
+    #endif
 }
 
 /* Motor Timeout Detector
@@ -417,7 +446,7 @@ void InitializeCurrentCounterTimer()
  * from going crazy in case of network/connection loss. :)
  * This is the savior of your billion dollar machine.
  */
-void TimeoutDetector()
+bool TimeoutDetector()
 {
     bool state_change = (millis() - last_motor_update > MOTOR_TIMEOUT) ^ last_motor_timeout_state;
     last_motor_timeout_state = millis() - last_motor_update > MOTOR_TIMEOUT;
@@ -426,15 +455,50 @@ void TimeoutDetector()
     {
         if (last_motor_timeout_state == 1)
         {
+            debugln("[ MOTOR_TIMEOUT ]");
             IndicatorTimer->setOverflow(1, HERTZ_FORMAT); // 10 Hz
             ResetMotors();
             ResetMotors();
+            return false;
         }
         else
         {
             IndicatorTimer->setOverflow(10, HERTZ_FORMAT); // 10 Hz
+            return true;
         }
     }
+    return !last_motor_timeout_state;
+}
+
+bool CheckBattery()
+{
+    bool arm_status = true;
+    if (main_voltage < MIN_BATT_VOLTAGE)
+    {
+        digitalWrite(LED_RED, HIGH);
+        arm_status = false;
+        ResetMotors();
+        nh.logerror(String("[ MAIN_VOLTAGE_CRITICAL ] Voltage: " + String(main_voltage)).c_str());
+        debugln(String("[ MAIN_VOLTAGE_CRITICAL ] Voltage: " + String(main_voltage)).c_str());
+    }
+    else if (main_voltage < LOW_BATT_VOLTAGE)
+    {
+        nh.logwarn(String("[ MAIN_VOLTAGE_LOW ] Voltage: " + String(main_voltage)).c_str());
+        debugln(String("[ MAIN_VOLTAGE_LOW ] Voltage: " + String(main_voltage)).c_str());
+    }
+    else
+    {
+    }
+    return arm_status;
+}
+
+void SystemWatchdog()
+{
+    motor_armed = TimeoutDetector();
+    bool _batt = CheckBattery();
+    digitalWrite(LED_RED, !_batt);
+    PerformHaltModeCheck();
+    digitalWrite(LED_BLUE, motor_armed);
 }
 
 void InitializePeripheralPins()
@@ -455,49 +519,50 @@ void InitializeHardwareSerials()
 
 void InitializePingSonarDevices()
 {
-    bool init_state = true;
-    init_state = init_state && ping_1.initialize(PING_PULSE_TIME);
+    #if defined(ENABLE_SONARS)
+    while (!bottom_sonar.initialize())
+    {
+        debugln("[PING_INIT_ERR]");
+        delay(1000);
+    }
+    bottom_sonar.set_timeout(PING_TIMEOUT);
 
-    // if () PublishInfo("ping_1 device on hwserial_3(PD2, PC12) Initialized successfully");
-    // else PublishInfo("ping_1 device on hwserial_3(PD2, PC12) failed to initialize.");
-
-    // if (ping_2.initialize()) PublishInfo("ping_2 device on hwserial_3(PD2, PC12) Initialized successfully");
-    // else PublishInfo("ping_2 device on hwserial_3(PD2, PC12) failed to initialize.");
-
-    if (!init_state) nh.logerror(String("PRM_ERR:" + String(PING_SONAR_INIT_FAILED)).c_str());
+    debugln("[PING_INIT_OK]");
+    #endif
 }
 
+void InitializeBatteryStateMsg()
+{
+    battery_msg.header.frame_id = "/base_link";
+    battery_msg.location = "back_tube";
+    battery_msg.design_capacity = 5000;
+    battery_msg.serial_number = "TURNIGY_5000MAH";
+    battery_msg.present = true;
+    battery_msg.power_supply_health = sensor_msgs::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
+    battery_msg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
+    battery_msg.power_supply_technology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LIPO;
+}
 
 void PublishBatteryState()
 {
-
-    // debug("[MAIN_VOLTAGE]");
-    // debugln(main_voltage);
-
-    // debug("[MAIN_CURRENT]");
-    // debugln(main_current);
-
+    battery_msg.header.stamp = nh.now();
     battery_msg.voltage = main_voltage;
     battery_msg.current = -main_current;
     battery_state.publish(&battery_msg);
 }
 
-
-void PublishPingSonarMeasurements()
+void HandlePingSonarRequests()
 {
+    #if defined(ENABLE_SONARS)
+    bottom_sonar.requestOnly(Ping1DNamespace::Distance_simple);
+
     range_msg.max_range = 30;
     range_msg.min_range = 0.5;
     range_msg.field_of_view = 30.0;
     range_msg.radiation_type = range_msg.ULTRASOUND;
-    if (ping_1.request(Ping1DNamespace::Distance_simple, PING_TIMEOUT))
-    {
-        range_msg.range = ping_1.distance() / 1000.0;
-        ping_1_pub.publish(&range_msg);
-    }
-    else
-    {
-        nh.logerror(String("PRM_ERR:" + String(PING_SONAR_READ_FAILED)).c_str());
-    }
+    range_msg.range = bottom_sonar.distance() / 1000.0;
+    bottom_sonar_pub.publish(&range_msg);
+    #endif
 }
 
 void PublishMotorCurrents(int readings_count=5)
@@ -531,6 +596,12 @@ void InitializeCurrentsMessage()
     // current_msg.layout.dim_length = 1;
     current_msg.data_length = 8;
     current_msg.data = (float *)malloc(sizeof(float)*8);
+}
+
+void LogStartUpInfo()
+{
+    nh.logwarn("Z Depth is only using bottom_sonar measurement.");
+    nh.logwarn("CMD_VEL.linear.z is a position parameter not speed, in meters, (m)");
 }
 
 // End of file. Copyright (c) 2019 ITU AUV Team / Electronics

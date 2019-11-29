@@ -137,7 +137,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     |--|--|
     | ALLOW_DIRECT_CONTROL | Enables the feature of direct motor control from the topics when defined | 
     | ENABLE_SONARS | Enables the ping sonars when defined | 
-    | DEBUG_PRINT |  Enables the ping sonars when defined | 
+    | DEBUG_PRINT |  Enables debugging mode (uses default serial port) | 
 
 - [ros_ethernet.h](include/ros_ethernet.h)
 

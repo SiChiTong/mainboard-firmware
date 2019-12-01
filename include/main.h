@@ -63,6 +63,7 @@
 #include <std_msgs/Float32MultiArray.h>
 #include <std_msgs/MultiArrayDimension.h>
 #include <std_msgs/Bool.h>
+#include <std_srvs/SetBool.h>
 #include <geometry_msgs/Twist.h>
 // #include <nav_msgs/Odometry.h>
 #include <mainboard_firmware/Odometry.h>
@@ -84,6 +85,7 @@ void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 static void HardwareTimer_Callback(HardwareTimer* htim);
+void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
 void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
@@ -189,6 +191,13 @@ ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &co
 ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 
+
+/**
+ * @brief Services
+ * 
+ */
+ros::ServiceServer<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse> arming_srv("/turquoise/set_arming", &arming_service_callback);
+
 /* *************************** Functions *************************** */
 /* Initialize NodeHandle with ethernet or serial
  */
@@ -256,6 +265,9 @@ void InitSubPub()
     // FIXME: Does this lines effect odom callback ?
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
+
+
+    nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(arming_srv);
 
     debugln("[PUB_SUB_INIT]");
 }
@@ -494,7 +506,7 @@ bool CheckBattery()
 
 void SystemWatchdog()
 {
-    motor_armed = TimeoutDetector();
+    TimeoutDetector();
     bool _batt = CheckBattery();
     digitalWrite(LED_RED, !_batt);
     PerformHaltModeCheck();

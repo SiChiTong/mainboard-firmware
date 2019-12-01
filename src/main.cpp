@@ -140,6 +140,48 @@ void command_callback(const mainboard_firmware::Signal& data)
     EvaluateCommand(data.type, data.content);
 }
 
+void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp)
+{
+    if (!req.data)
+    {
+        // Disarming Request, Disarm immidately.
+        debugln("[DISARM_REQUEST]");
+        debugln("[DISARMING]");
+        motor_armed = false;
+        resp.success = true;
+    }
+    else
+    {
+        debugln("[ARM_REQUEST]");
+
+        // Arming Request, first check conditions !!
+        bool is_safe2arm = false;
+        /*
+        * TODO: PERFORM NECESSARY CHECKS
+        * - Does battery has normal voltage ?
+        * - Timeout exits ? 
+        * etc...
+        */
+        is_safe2arm = true;
+        if (!is_safe2arm)
+        {
+            // NOT safe for arming !
+            // TODO: Implement the reason
+            resp.message = "REASON_NOT_IMPLEMENTED_YET";
+            resp.success = false;
+            debugln("[ARM] FAILED !");
+        }
+        else
+        {
+            motor_armed = true;
+            resp.success = true;
+            debugln("[ARM] SUCCESS !");
+
+        }
+
+    }
+}
+
 static void HardwareTimer_Callback(HardwareTimer* htim)
 {
     if (htim == IndicatorTimer)

@@ -73,7 +73,7 @@
 #include <sensor_msgs/BatteryState.h>
 #include <ping1d.h>
 #include <transformations.h>
-
+#include <BatteryMonitor.h>
 #include <AutoPID.h>
 #include <math.h>
 /* *************************** Includes *************************** */
@@ -123,10 +123,13 @@ Servo motors[8];
 HardwareTimer *IndicatorTimer;
 HardwareTimer *CurrentCounterTimer;
 HardwareTimer *PingSonarTimer;
+HardwareTimer *PublishTimer;
 /* PING SONAR CONFIGURATION
  */
 HardwareSerial hwserial_3 = HardwareSerial(PE7, PE8);
 static Ping1D bottom_sonar { hwserial_3 };
+
+BatteryMonitor *bms;
 
 /* This section includes pinmaps for current sensors and auxilary channel pinmaps
  * currently, mainboard does not support such features
@@ -140,9 +143,6 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
  */
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
-double current_consumption_mah = 0;
-double main_current = 0;
-double main_voltage = 0;
 bool motor_armed = false;
 
 /**
@@ -333,7 +333,7 @@ void PerformHaltModeCheck()
     while (!nh.connected()) {
         nh.spinOnce(); 
         delay(50); 
-        digitalWrite(LED_RED, main_voltage < MIN_BATT_VOLTAGE);
+        digitalWrite(LED_RED, bms->getVoltage() < MIN_BATT_VOLTAGE);
     }
 
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
@@ -424,19 +424,15 @@ void EvaluateCommand(String type, String content)
     }
 }
 
-/* Init, greed led indicator timer
- */
-void InitializeIndicatorTimer(uint32_t frequency)
-{
-    IndicatorTimer = new HardwareTimer(INDICATOR_TIMER);
-    IndicatorTimer->setOverflow(frequency, HERTZ_FORMAT); // 10 Hz
-    IndicatorTimer->attachInterrupt(HardwareTimer_Callback);
-    IndicatorTimer->resume();
-    debugln("[INDICATOR_LED_TIMER_INIT]");
-}
 
 void InitializeTimers()
 {
+    IndicatorTimer = new HardwareTimer(INDICATOR_TIMER);
+    IndicatorTimer->setOverflow(10, HERTZ_FORMAT); // 10 Hz
+    IndicatorTimer->attachInterrupt(HardwareTimer_Callback);
+    IndicatorTimer->resume();
+    debugln("[INDICATOR_LED_TIMER_INIT]");
+
     CurrentCounterTimer = new HardwareTimer(CURRENT_COUNT_TIMER);
     CurrentCounterTimer->setOverflow(CURRENT_COUNT_INTERVAL * 1000000.0 , MICROSEC_FORMAT); 
     CurrentCounterTimer->attachInterrupt(HardwareTimer_Callback);
@@ -444,12 +440,18 @@ void InitializeTimers()
     debugln("[CURRENT_COUNTING_TIMER_INIT]");
 
     #if defined(ENABLE_SONARS)
-    PingSonarTimer = new HardwareTimer(TIM11);
+    PingSonarTimer = new HardwareTimer(PING_TIMER);
     PingSonarTimer->setOverflow(1000.0, MICROSEC_FORMAT); 
     PingSonarTimer->attachInterrupt(HardwareTimer_Callback);
     PingSonarTimer->resume();
     debugln("[CURRENT_COUNTING_TIMER_INIT]");
     #endif
+
+    PublishTimer = new HardwareTimer(TIM10);
+    PublishTimer->setOverflow(GLOBAL_PUBLISH_RATE, HERTZ_FORMAT);
+    PublishTimer->attachInterrupt(HardwareTimer_Callback);
+    PublishTimer->resume();
+    debugln("[PUBLISHER_TIMER_INIT]");
 }
 
 /* Motor Timeout Detector
@@ -485,18 +487,18 @@ bool TimeoutDetector()
 bool CheckBattery()
 {
     bool arm_status = true;
-    if (main_voltage < MIN_BATT_VOLTAGE)
+    if (bms->getVoltage() < MIN_BATT_VOLTAGE)
     {
         digitalWrite(LED_RED, HIGH);
         arm_status = false;
         ResetMotors();
-        nh.logerror(String("[ MAIN_VOLTAGE_CRITICAL ] Voltage: " + String(main_voltage)).c_str());
-        debugln(String("[ MAIN_VOLTAGE_CRITICAL ] Voltage: " + String(main_voltage)).c_str());
+        nh.logerror(String("[ MAIN_VOLTAGE_CRITICAL ] Voltage: " + String(bms->getVoltage())).c_str());
+        debugln(String("[ MAIN_VOLTAGE_CRITICAL ] Voltage: " + String(bms->getVoltage())).c_str());
     }
-    else if (main_voltage < LOW_BATT_VOLTAGE)
+    else if (bms->getVoltage() < LOW_BATT_VOLTAGE)
     {
-        nh.logwarn(String("[ MAIN_VOLTAGE_LOW ] Voltage: " + String(main_voltage)).c_str());
-        debugln(String("[ MAIN_VOLTAGE_LOW ] Voltage: " + String(main_voltage)).c_str());
+        nh.logwarn(String("[ MAIN_VOLTAGE_LOW ] Voltage: " + String(bms->getVoltage())).c_str());
+        debugln(String("[ MAIN_VOLTAGE_LOW ] Voltage: " + String(bms->getVoltage())).c_str());
     }
     else
     {
@@ -543,37 +545,26 @@ void InitializePingSonarDevices()
     #endif
 }
 
-void InitializeBatteryStateMsg()
+void InitializeBatteryMonitor()
 {
-    battery_msg.header.frame_id = "/base_link";
-    battery_msg.location = "back_tube";
-    battery_msg.design_capacity = 5000;
-    battery_msg.serial_number = "TURNIGY_5000MAH";
-    battery_msg.present = true;
-    battery_msg.power_supply_health = sensor_msgs::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
-    battery_msg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
-    battery_msg.power_supply_technology = sensor_msgs::BatteryState::POWER_SUPPLY_TECHNOLOGY_LIPO;
-}
-
-void PublishBatteryState()
-{
-    battery_msg.header.stamp = nh.now();
-    battery_msg.voltage = main_voltage;
-    battery_msg.current = -main_current;
-    battery_state.publish(&battery_msg);
+    bms = new BatteryMonitor(&battery_state);
+    bms->initBattery(BatteryMonitor::TURNIGY_5000);
 }
 
 void HandlePingSonarRequests()
 {
     #if defined(ENABLE_SONARS)
+    if (bottom_sonar.PublishFlag)
+    {
+        bottom_sonar.PublishFlag = false;
+        range_msg.max_range = 30;
+        range_msg.min_range = 0.5;
+        range_msg.field_of_view = 30.0;
+        range_msg.radiation_type = range_msg.ULTRASOUND;
+        range_msg.range = bottom_sonar.distance() / 1000.0;
+        bottom_sonar_pub.publish(&range_msg);
+    }
     bottom_sonar.requestOnly(Ping1DNamespace::Distance_simple);
-
-    range_msg.max_range = 30;
-    range_msg.min_range = 0.5;
-    range_msg.field_of_view = 30.0;
-    range_msg.radiation_type = range_msg.ULTRASOUND;
-    range_msg.range = bottom_sonar.distance() / 1000.0;
-    bottom_sonar_pub.publish(&range_msg);
     #endif
 }
 

@@ -22,13 +22,25 @@
 
 #include <Arduino.h>
 
-#define ACS712_30A_SENS_MV_PER_AMP       66.0                      // 66 mV per 1.A
-#define ACS712_20A_SENS_MV_PER_AMP       100.0                     // 100 mV per 1.A
+#define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.
+#define GLOBAL_PUBLISH_RATE              2                         // Used for batterystate / currents etc.
 
+/* ******************* Communication Settings ******************* */
+#define ROS_BAUDRATE                     921600                    // Ros Communication Baud Rate
+#define DEBUG_BAUDRATE                   57600                     // Default Serial port baud rate. (For DEBUG use.)
+/* ******************* Communication Settings ******************* */
+
+/* ************************ ADC Settings ************************ */
 #define ADC_READ_RESOLUTION_BIT          12                        // 12 bits for analog read resolution
 #define ADC_READ_MAX_VALUE               4096.0                    // 2^ADC_READ_RESOLUTION_BIT = 4096
 #define ADC_READ_MAX_VOLTAGE             3300.0                    // 12 bits for analog read resolution max 3.3V
+/* ************************ ADC Settings ************************ */
+
+/* ********************** ACS 712 Settings ********************** */
+#define ACS712_30A_SENS_MV_PER_AMP       66.0                      // 66 mV per 1.A
+#define ACS712_20A_SENS_MV_PER_AMP       100.0                     // 100 mV per 1.A
 #define ADC_OFFSET_CURRENT_ERROR         800.0                     // 800 mA offset error.
+/* ********************** ACS 712 Settings ********************** */
 
 #define INDICATOR_TIMER                  TIM8                      // Timer instance of indicator Led. (LED_GREEN)
 
@@ -49,8 +61,7 @@
 #define LOW_BATT_VOLTAGE                 9.5                       // Low Voltage warning.
 /* **************** APM Common Power Module (CPM) **************** */
 
-
-#define PING_TIMEOUT                     1000
-#define ROS_BAUDRATE                     115200                    // Ros Communication Baud Rate
-#define DEBUG_BAUDRATE                   57600                     // Default Serial port baud rate. (For DEBUG use.)
-#define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.
+/* ******************** Ping Sonar Settings ********************* */
+#define PING_TIMEOUT                     1000                      // Ping Sonar, request timeout
+#define PING_TIMER                       TIM11                     // Ping sonar response waiting timer
+/* ******************** Ping Sonar Settings ********************* */

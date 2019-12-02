@@ -233,6 +233,8 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | ROS_BAUDRATE | 115200 | bits / second (bps)| Ros Communication Baud Rate |
     | DEBUG_BAUDRATE | 57600 | bits / second (bps) | Default Serial port baud rate. (For DEBUG use.) |
     | MOTOR_TIMEOUT | 400 | ms | the max time between each motor cmd allowed |
+    | GLOBAL_PUBLISH_RATE | 2 | Hz | Frequency of publish for low-priority messages |
+    | PING_TIMER | TIM11 | Timer | The timer to check ping sonar messages |
 
 - [motor_config.h](include/motor_config.h)
 

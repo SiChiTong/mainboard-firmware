@@ -190,11 +190,9 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
     }
     else if (htim == CurrentCounterTimer)
     {
-        main_voltage = (double)analogRead(VOLTAGE_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO;
+        bms->setVoltage((double)analogRead(VOLTAGE_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO);
 
-        main_current = (double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_CURRENT_RATIO;
-        
-        current_consumption_mah -= (double)CURRENT_COUNT_INTERVAL * main_current;
+        bms->setCurrent((double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_CURRENT_RATIO, (double)CURRENT_COUNT_INTERVAL);
     }
     else if (htim == PingSonarTimer)
     {
@@ -202,6 +200,11 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
         {
             bottom_sonar.checkMessage(Ping1DNamespace::Distance_simple);
         }
+    }
+    else if (htim == PublishTimer)
+    {
+        bms->raisePublishFlag();
+        bottom_sonar.PublishFlag = true;
     }
     else
     {
@@ -225,11 +228,10 @@ void setup()
     InitMotors();
     InitializePeripheralPins();
     InitializeCurrentsMessage();
-    InitializeBatteryStateMsg();
+    InitializeBatteryMonitor();
     InitializePingSonarDevices();
     pinMode(USER_BTN, INPUT);
     
-    InitializeIndicatorTimer(1);
     InitializeTimers();
     /* ********** HALT OPERATION ********** */
     PerformHaltModeCheck();
@@ -255,11 +257,11 @@ void setup()
 
 void loop()
 {
-    PublishBatteryState();
+    bms->publish(nh.now());
     PerformUARTControl();
     HandlePingSonarRequests();
 
-    // PublishMotorCurrents(2);
+    // PublishMotorCurrents(1);
     nh.spinOnce();
     SystemWatchdog();
 }

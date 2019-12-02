@@ -170,9 +170,17 @@ class ServiceServer:
         data_buffer = StringIO.StringIO()
         req.serialize(data_buffer)
         self.response = None
-        self.parent.send(self.id, data_buffer.getvalue())
-        while self.response is None:
-            pass
+        max_tries = 10
+        tries = 0
+        while tries < max_tries:
+            tries += 1
+            self.parent.send(self.id, data_buffer.getvalue())
+            b_time = rospy.Time.now().to_sec()
+            timeout = 0.2
+            while self.response is None and rospy.Time.now().to_sec() - b_time < timeout:
+                pass
+            if not (self.response is None):
+                return self.response
         return self.response
 
     def handlePacket(self, data):

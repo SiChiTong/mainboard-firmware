@@ -24,7 +24,6 @@
 
 void odometry_callback(const mainboard_firmware::Odometry& data)
 {
-    data.xD:
     debugln("[ODOMETRY]      " + String(millis()));
     n[0] = data.pose.position.x;
     n[1] = data.pose.position.y;

@@ -68,7 +68,7 @@ const int SPIN_OK = 0;
 const int SPIN_ERR = -1;
 const int SPIN_TIMEOUT = -2;
 
-const uint8_t SYNC_SECONDS  = 5;
+const uint8_t SYNC_SECONDS  = 1;
 const uint8_t MODE_FIRST_FF = 0;
 /*
  * The second sync byte is a protocol version. It's value is 0xff for the first

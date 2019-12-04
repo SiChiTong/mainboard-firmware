@@ -20,9 +20,32 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define XAVIER_RX                        PD2
-#define XAVIER_TX                        PC12
-#include <HardwareSerial.h>
-HardwareSerial XavierSerial(XAVIER_RX, XAVIER_TX);
-#define Serial1 XavierSerial
-#define USE_STM32_HW_SERIAL
+#include <ros.h>
+#include <sensor_msgs/BatteryState.h>
+
+class BatteryMonitor
+{
+private:
+    ros::Publisher *publisher_;
+    bool pending_publish = false;
+    double voltage_ = 0;
+    double current_ = 0;
+    double current_consumption_ = 0;
+
+public:
+    enum BatteryModel{ TURNIGY_5000, CUSTOM_LIION };
+    sensor_msgs::BatteryState msg;
+    BatteryMonitor(ros::Publisher *publisher);
+    void initBattery(BatteryModel model);
+    void raisePublishFlag();
+    double getVoltage();
+    double getCurrent();
+    int getCurrentConsumption();
+    void setVoltage(double voltage);
+    void setCurrent(double current, double dt);
+    void publish();
+    void publish(ros::Time now);
+
+
+    ~BatteryMonitor();
+};

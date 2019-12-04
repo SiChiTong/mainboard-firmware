@@ -74,6 +74,8 @@ public:
      */
     bool isRequestPending();
 
+    bool PublishFlag = false;
+
     void set_timeout(uint32_t timeout_ms) { _timeout = timeout_ms; }
     
     uint32_t get_timeout() { return _timeout; } 

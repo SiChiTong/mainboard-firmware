@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+
+    <arg name="connection_type" default="/dev/ttyTHS1 _baud:=115200"/>
+    <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="connection_type" output="screen" respawn="true">
+        <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
+    </node>
+</launch>

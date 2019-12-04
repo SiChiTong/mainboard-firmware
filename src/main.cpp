@@ -140,6 +140,48 @@ void command_callback(const mainboard_firmware::Signal& data)
     EvaluateCommand(data.type, data.content);
 }
 
+void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp)
+{
+    if (!req.data)
+    {
+        // Disarming Request, Disarm immidately.
+        debugln("[DISARM_REQUEST]");
+        debugln("[DISARMING]");
+        motor_armed = false;
+        resp.success = true;
+    }
+    else
+    {
+        debugln("[ARM_REQUEST]");
+
+        // Arming Request, first check conditions !!
+        bool is_safe2arm = false;
+        /*
+        * TODO: PERFORM NECESSARY CHECKS
+        * - Does battery has normal voltage ?
+        * - Timeout exits ? 
+        * etc...
+        */
+        is_safe2arm = true;
+        if (!is_safe2arm)
+        {
+            // NOT safe for arming !
+            // TODO: Implement the reason
+            resp.message = "REASON_NOT_IMPLEMENTED_YET";
+            resp.success = false;
+            debugln("[ARM] FAILED !");
+        }
+        else
+        {
+            motor_armed = true;
+            resp.success = true;
+            debugln("[ARM] SUCCESS !");
+
+        }
+
+    }
+}
+
 static void HardwareTimer_Callback(HardwareTimer* htim)
 {
     if (htim == IndicatorTimer)
@@ -148,11 +190,9 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
     }
     else if (htim == CurrentCounterTimer)
     {
-        main_voltage = (double)analogRead(VOLTAGE_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO;
+        bms->setVoltage((double)analogRead(VOLTAGE_SENS_PIN)*(double)ADC_TO_VOLTAGE_RATIO);
 
-        main_current = (double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_CURRENT_RATIO;
-        
-        current_consumption_mah -= (double)CURRENT_COUNT_INTERVAL * main_current;
+        bms->setCurrent((double)analogRead(CURRENT_SENS_PIN)*(double)ADC_TO_CURRENT_RATIO, (double)CURRENT_COUNT_INTERVAL);
     }
     else if (htim == PingSonarTimer)
     {
@@ -160,6 +200,11 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
         {
             bottom_sonar.checkMessage(Ping1DNamespace::Distance_simple);
         }
+    }
+    else if (htim == PublishTimer)
+    {
+        bms->raisePublishFlag();
+        bottom_sonar.PublishFlag = true;
     }
     else
     {
@@ -183,11 +228,10 @@ void setup()
     InitMotors();
     InitializePeripheralPins();
     InitializeCurrentsMessage();
-    InitializeBatteryStateMsg();
+    InitializeBatteryMonitor();
     InitializePingSonarDevices();
     pinMode(USER_BTN, INPUT);
     
-    InitializeIndicatorTimer(1);
     InitializeTimers();
     /* ********** HALT OPERATION ********** */
     PerformHaltModeCheck();
@@ -213,11 +257,11 @@ void setup()
 
 void loop()
 {
-    PublishBatteryState();
+    bms->publish(nh.now());
     PerformUARTControl();
     HandlePingSonarRequests();
 
-    // PublishMotorCurrents(2);
+    // PublishMotorCurrents(1);
     nh.spinOnce();
     SystemWatchdog();
 }

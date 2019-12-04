@@ -8,6 +8,7 @@ before_script:
   - apt-get update > /dev/null
   - apt-get install -y python-catkin-tools > /dev/null
   - apt-get install -y ros-melodic-rosserial > /dev/null
+  - apt-get install -y python-pip
   - pip install -U platformio
 
  

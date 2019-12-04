@@ -11,10 +11,15 @@ before_script:
   - apt-get install -y python-pip
   - pip install -U platformio
 
+
+PlatformIO Build:
+  stage: build
+  script:
+    -  cd src/mainboard-firmware
+    -  platformio run
  
-catkin tools: 
+Catkin Build: 
   stage: build
   script:
     -  catkin build --force-color
-    -  cd src/mainboard-firmware
-    -  platformio run
+    

@@ -3,13 +3,18 @@ image: ros:melodic-robot
 before_script:
   - git clone https://gitlab.com/itu-auv/electronics/mainboard-firmware.git
   - cd mainboard-firmware
+  - mkdir -p catkin_ws/src
+  - mv mainboard-firmware/ catkin_ws/src/
+  - cd catkin_ws
   - apt-get update > /dev/null
   - apt-get install -y python-catkin-tools > /dev/null
   - apt-get install -y ros-melodic-rosserial > /dev/null
+  - pip install -U platformio
 
  
 catkin tools: 
   stage: build
   script:
-    -  catkin build --no-status --force-color
+    -  catkin build --force-color
+    -  cd src/mainboard-firmware
     -  platformio run

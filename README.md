@@ -1,3 +1,4 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![ROS: Melodic](https://img.shields.io/badge/ROS-Melodic-red.svg)](https://wiki.ros.org/melodic) [![web: auv.itu.edu.tr](https://img.shields.io/badge/web-auv.itu.edu.tr-blue.svg)](https://www.auv.itu.edu.tr) [![pipeline status](https://gitlab.com/itu-auv/electronics/mainboard-firmware/badges/master/pipeline.svg)](https://gitlab.com/itu-auv/electronics/mainboard-firmware/commits/master)
 # Mainboard Firmware
 
 ## Overview

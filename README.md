@@ -55,6 +55,20 @@ To build from source, clone to repository to a catkin workspace, and use catkin 
 
 This will build the ros package thus, you'll be able to use messages, launch files, configs etc. To upload the source code to the microcontroller, use PlatformIO's "Upload" button in VSCode, or your editor.
 
+#### Setting Communication
+
+The port name of mainboard has a ```/dev/ttyUSB<something>``` form by default, but we do not want that. Because that makes things difficult — it usually requires a trial and error approach to find out what the hell is the mainboard's tty name this time.
+
+To obtain a fix serial port name you should add a udev rule. Every serial device has a Vendor ID and a Product ID.
+
+- To find out the serial number of mainboard run below command in terminal
+    - ```udevadm info -a -n /dev/tty<mainboard>```
+
+- Note  ```ATTRS{idVendor}, ATTRS{idProduct}, ATTRS{serial}``` values.
+
+- And under ```/etc/udev/rules.d``` Create a new file called ```99-usb-serial.rules``` and put the following line in there
+    - ```SUBSYSTEM=="tty", ATTRS{idVendor}=="<value>", ATTRS{idProduct}=="<value>", ATTRS{serial}=="<value>", SYMLINK+="ttySTM"```
+
 ## Usage
 
 After flashing the board, to establish the connection to the microcontroller:

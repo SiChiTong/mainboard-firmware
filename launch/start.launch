@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<launch>
+
+    <arg name="ostype" value="$(env OSTYPE)"/>
+    <arg name="user" value="$(env USER)"/>
+
+    <group if="$(param ostype) == linux-gnu">
+
+        <group if="$(param user) == nvidia"> <!--Nvidia-->
+            <arg name="connection_type" default="/dev/ttySTM _baud:=912600"/>
+            <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="connection_type" output="screen" respawn="true">
+                <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
+            </node>
+        </group>
+
+        <group unless="$(param user) == nvidia"> <!--Ubuntu-->
+            <!-- MAX Baudrates
+                For PL2303: 1.2M CHECK:http://www.prolific.com.tw/UserFiles/files/ds_pl2303HXD_v1_4_4.pdf
+                For FT232R: 3M
+                For -->
+            <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args=" /dev/ttyUSB1 _baud:=921600" output="screen" respawn="true">
+                <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
+            </node>
+        </group>
+
+    </group>
+
+    <group unless="$(param ostype) == linux-gnu"> <!--OSX-->
+        <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args=" /dev/cu.usbserial _baud:=57600" output="screen" respawn="true">
+            <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
+        </node>
+    </group>
+
+</launch>

@@ -205,6 +205,11 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
     {
         bms->raisePublishFlag();
         bottom_sonar.PublishFlag = true;
+        pressure_sensor.setPublishFlag(true);
+    }
+    else if (htim == PressureTimer)
+    {
+        pressure_sensor.incrementTime(htim->getOverflow(MICROSEC_FORMAT));
     }
     else
     {
@@ -230,6 +235,7 @@ void setup()
     InitializeCurrentsMessage();
     InitializeBatteryMonitor();
     InitializePingSonarDevices();
+    InitPressureSensor();
     pinMode(USER_BTN, INPUT);
     
     InitializeTimers();
@@ -260,6 +266,7 @@ void loop()
     bms->publish(nh.now());
     PerformUARTControl();
     HandlePingSonarRequests();
+    HandlePressureSensorRoutine();
 
     // PublishMotorCurrents(1);
     nh.spinOnce();

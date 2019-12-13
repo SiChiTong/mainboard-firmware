@@ -65,3 +65,10 @@
 #define PING_TIMEOUT                     1000                      // Ping Sonar, request timeout
 #define PING_TIMER                       TIM11                     // Ping sonar response waiting timer
 /* ******************** Ping Sonar Settings ********************* */
+
+
+/* ***************** Pressure Sensor Settings ******************* */
+#define PRESSURE_TIMER                   TIM12
+#define PRESSURE_INTERVAL                10000
+#define FLUID_DENSITY                    997                       // (freshwater, 1029 for seawater)
+/* ***************** Pressure Sensor Settings ******************* */

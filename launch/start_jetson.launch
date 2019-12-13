@@ -1,7 +1,9 @@
-
 <?xml version="1.0"?>
 <launch>
-    <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="/dev/ttySTM _baud:=912600" output="screen" respawn="true">
+
+    <arg name="connection" default="/dev/ttySTM _baud:=921600"/>
+    <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="$(arg connection)" output="screen" respawn="true">
         <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
     </node>
 </launch>
+

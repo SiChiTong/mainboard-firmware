@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <launch>
-
     <!-- MAX Baudrates
     For PL2303: 1.2M CHECK:http://www.prolific.com.tw/UserFiles/files/ds_pl2303HXD_v1_4_4.pdf
     For FT232R: 3M
     For -->
-    <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args=" /dev/ttyUSB1 _baud:=921600" output="screen" respawn="true">
+    <arg name="connection" default="/dev/ttySTM _baud:=921600"/>
+    <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="$(arg connection)" output="screen" respawn="true">
         <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
     </node>
 </launch>

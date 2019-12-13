@@ -40,11 +40,18 @@
 #define ALLOW_DIRECT_CONTROL
 #define ENABLE_SONARS
 #define ENABLE_PRES_SENSOR
+#define ENABLE_CUSTOM_SERVO
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
-#include <Servo.h>
 #include <motor_config.h>
+
+#if defined(ENABLE_CUSTOM_SERVO)
+    #include <CustomServo.h>
+#else
+    #include <Servo.h>
+#endif
+
 #include <error_codes.h>
 #include <params.h>
 #include <debugging.h>

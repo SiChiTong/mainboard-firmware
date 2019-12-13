@@ -39,6 +39,7 @@
 #define DEBUG_PRINT
 #define ALLOW_DIRECT_CONTROL
 #define ENABLE_SONARS
+#define ENABLE_PRES_SENSOR
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
@@ -76,6 +77,8 @@
 #include <BatteryMonitor.h>
 #include <AutoPID.h>
 #include <math.h>
+#include <Wire.h>
+#include <MS5837.h>
 /* *************************** Includes *************************** */
 
 
@@ -106,8 +109,9 @@ void PublishPingSonarMeasurements();
 void PublishMotorCurrents(int);
 void InitializeCurrentsMessage();
 bool CheckBattery();
-
-
+void HandlePressureSensorRoutine();
+void InitPressureSensor();
+void InitializeTimers();
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -124,12 +128,15 @@ HardwareTimer *IndicatorTimer;
 HardwareTimer *CurrentCounterTimer;
 HardwareTimer *PingSonarTimer;
 HardwareTimer *PublishTimer;
+HardwareTimer *PressureTimer;
+
 /* PING SONAR CONFIGURATION
  */
 HardwareSerial hwserial_3 = HardwareSerial(PE7, PE8);
 static Ping1D bottom_sonar { hwserial_3 };
 
 BatteryMonitor *bms;
+MS5837 pressure_sensor;
 
 /* This section includes pinmaps for current sensors and auxilary channel pinmaps
  * currently, mainboard does not support such features
@@ -295,7 +302,7 @@ void GetPIDControllerParameters()
         "~pid_rx", "~pid_ry", "~pid_rz"};
     for (size_t i = 0; i < 6; i++)
     {
-        if (!nh.getParam(pid_param_names[i], pid_gains[i], 3)) 
+        if (!nh.getParam(pid_param_names[i], pid_gains[i], 3, 5000)) 
         { 
             for (size_t j = 0; j < 3; j++)
             {
@@ -339,6 +346,11 @@ void PerformHaltModeCheck()
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
     motor_armed = last_motor_armed;
     IndicatorTimer->resume();
+
+    GetPIDControllerParameters();
+    UpdatePIDControllerGains();
+    nh.logwarn(String(pid_gains[0][0]).c_str());
+    debugln(String(pid_gains[0][0]).c_str());
     debugln("[HALT_MODE] OFF! (Normal Operation)");
 
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
@@ -424,6 +436,32 @@ void EvaluateCommand(String type, String content)
     }
 }
 
+void InitPressureSensor()
+{
+    #if defined(ENABLE_PRES_SENSOR)
+    Wire.begin();
+    pressure_sensor.setModel(MS5837::MS5837_30BA);
+    pressure_sensor.setFluidDensity(FLUID_DENSITY); 
+    pressure_sensor.setOverSampling(MS5837_CONVERT_OVERSAMPLING::OSR_8192); // set oversampling to OSR_8192
+    while (!pressure_sensor.init())
+    {
+        delay(100);
+    }
+    #endif
+}
+
+void HandlePressureSensorRoutine()
+{
+    #if defined(ENABLE_PRES_SENSOR)
+    int bar30_stat = pressure_sensor.readNonBlocking();
+    if (bar30_stat == 1 && pressure_sensor.getPublishFlag())
+    {
+        Serial.println(pressure_sensor.depth());
+        // publish sensor.depth();
+        pressure_sensor.setPublishFlag(false);
+    }
+    #endif
+}
 
 void InitializeTimers()
 {
@@ -452,6 +490,13 @@ void InitializeTimers()
     PublishTimer->attachInterrupt(HardwareTimer_Callback);
     PublishTimer->resume();
     debugln("[PUBLISHER_TIMER_INIT]");
+
+    #if defined(ENABLE_PRES_SENSOR)
+    PressureTimer = new HardwareTimer(PRESSURE_TIMER);
+    PressureTimer->setOverflow(PRESSURE_INTERVAL, MICROSEC_FORMAT);
+    PressureTimer->attachInterrupt(HardwareTimer_Callback);
+    PressureTimer->resume();
+    #endif
 }
 
 /* Motor Timeout Detector

@@ -21,13 +21,20 @@
 // SOFTWARE.
 
 #include <main.h>
+// Todo: add state machine class, to control arming state.
+// perform all arming failure calculations in there.
+// put systemwatchdog in there.
 
 void odometry_callback(const mainboard_firmware::Odometry& data)
 {
+    double n[6];
+    double v[6];
     debugln("[ODOMETRY]      " + String(millis()));
     n[0] = data.pose.position.x;
     n[1] = data.pose.position.y;
     n[2] = data.pose.position.z;
+    // The conversion must be done in main computer / host.
+    // define custom message type.
     geometry_msgs::Vector3 euler = EulerFromQuaternion(data.pose.orientation);
     n[3] = euler.x;
     n[4] = euler.y;
@@ -41,76 +48,37 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
     v[4] = data.twist.angular.y;
     v[5] = data.twist.angular.z;
 
-    unsigned long dt = millis() - last_odom_update;
-    last_odom_update += dt;
-    
-    double controller_output[6];
-    RunPIDControllers(controller_output, dt);
-
-    debug("[PID_CONTROLLER]");
-
-    for (size_t i = 0; i < 6; i++)
-    {
-        debug(controller_output[i]);
-        debug(" ");
-    }
-    debugln("");
-
-    // PID CONTROLLER OUTPUT TO THRUSTER CONFIGURATION
-    
-    float thrust_vector[8];
-    float sum = 0;
-
-    for (size_t i = 0; i < 8; i++)
-    {
-        sum = 0;
-        for (size_t j = 0; j < 6; j++)
-        {
-            sum += controller_output[j] * thruster_allocation[j][i];
-        }
-        thrust_vector[i] = sum;
-    }
-
-    debug("[THRUST_VECTOR] ");
-
-    for (size_t i = 0; i < 8; i++)
-    {
-        debug(thrust_vector[i]);
-        debug(" ");
-    }
-    debugln("");
-
-    // NORMAL-OPERATION
-    if (motor_armed)
-    {
-        for (size_t i = 0; i < 8; i++)
-        {
-            int motor_pulse_us = get_pwm(thrust_vector[i], thruster_direction[i]);
-            motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
-            motors[i].writeMicroseconds(motor_pulse_us);
-        }
-    }
+    controller.set_velocity(v);
+    controller.set_position(n);
+    delete[] n;
+    delete[] v;
 }
 
 void cmd_vel_callback(const geometry_msgs::Twist& data)
 {
     last_motor_update = millis();
-    
-    velocity_setpoint[0] = data.linear.x;
-    velocity_setpoint[1] = data.linear.y;
-    velocity_setpoint[2] = data.linear.z;
-    velocity_setpoint[3] = data.angular.x;
-    velocity_setpoint[4] = data.angular.y;
-    velocity_setpoint[5] = data.angular.z;
+    double setp[6];
+    setp[0] = data.linear.x;
+    setp[1] = data.linear.y;
+    setp[2] = data.linear.z;
+    setp[3] = data.angular.x;
+    setp[4] = data.angular.y;
+    setp[5] = data.angular.z;
+
+    setp[2] = bottom_sonar.distance() / 1000;
+    setp[3] = 0; 
+    setp[4] = 0;
+    controller.set_velocity_reference(setp);
+
 
     debug("[CMD_VEL] [" + String(millis()) + "] ");
     for (size_t i = 0; i < 6; i++)
     {
-        debug(velocity_setpoint[i]);
+        debug(setp[i]);
         debug(" ");
     }
     debugln("");
-
+    delete[] setp;
 }
 
 /* Motor value update callback
@@ -211,6 +179,37 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
     {
         pressure_sensor.incrementTime(htim->getOverflow(MICROSEC_FORMAT));
     }
+    else if (htim == PIDTimer)
+    {
+        controller.set_dt(1000.0 / PID_LOOP_RATE);
+        controller.run();
+
+        debug("[PID_CONTROLLER]");
+
+        for (size_t i = 0; i < 6; i++)
+        {
+            debug(controller.get_output()[i]);
+            debug(" ");
+        }
+        debugln("");
+
+
+        debug("[THRUST_VECTOR] ");
+        if (motor_armed)
+        {
+            for (size_t i = 0; i < 8; i++)
+            {
+                double *thrust = controller.get_thrust_vector();
+                
+                int motor_pulse_us = get_pwm(thrust[i], thruster_direction[i]);
+                motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+                motors[i].writeMicroseconds(motor_pulse_us);
+                debug(thrust[i]);
+                debug(" ");
+            }
+            debugln("");
+        }
+    }
     else
     {
         UNUSED(htim);
@@ -236,6 +235,7 @@ void setup()
     InitializeBatteryMonitor();
     InitializePingSonarDevices();
     InitPressureSensor();
+    InitController();
     pinMode(USER_BTN, INPUT);
     
     InitializeTimers();
@@ -253,7 +253,6 @@ void setup()
     debugln("[PARAM_OK] TAM");
     GetPIDControllerParameters();
     debugln("[PARAM_OK] PID_GAINS");
-    UpdatePIDControllerGains();
     debugln("[UPDATE_PID_GAINS]");
     /* ********** GET PARAMETERS ********** */
 

@@ -72,3 +72,8 @@
 #define PRESSURE_INTERVAL                10000
 #define FLUID_DENSITY                    997                       // (freshwater, 1029 for seawater)
 /* ***************** Pressure Sensor Settings ******************* */
+
+/* ***************** Pressure Sensor Settings ******************* */
+#define PID_TIMER                        TIM13
+#define PID_LOOP_RATE                    80.0
+/* ***************** Pressure Sensor Settings ******************* */

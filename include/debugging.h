@@ -25,7 +25,7 @@
 template<typename T>
 void debug(T msg)
 {
-    #if defined(DEBUG_PRINT)
+    #ifndef RELEASE_MODE
     Serial.print(String(msg));
     #endif
 
@@ -36,7 +36,7 @@ void debug(T msg)
 template<typename T>
 void debugln(T msg)
 {
-    #if defined(DEBUG_PRINT)
+    #ifndef RELEASE_MODE
     Serial.println(String(msg));
     #endif
 

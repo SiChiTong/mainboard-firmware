@@ -36,7 +36,7 @@
  * Open Pull Request here: https://github.com/stm32duino/STM32Ethernet
  */
 // #define USE_ETHERNET
-#define RELEASE_MODE
+// #define RELEASE_MODE
 #define ALLOW_DIRECT_CONTROL
 #define ENABLE_SONARS
 #define ENABLE_PRES_SENSOR
@@ -306,7 +306,7 @@ void GetPIDControllerParameters()
 void PerformHaltModeCheck()
 {
     // Connection is up, skip mode check.
-    if (nh.connected()) return;
+    if (nh.connected() && !digitalRead(PF13)) return;
     bool last_motor_armed = motor_armed;
 
     motor_armed = false;
@@ -319,7 +319,7 @@ void PerformHaltModeCheck()
     ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
 
-    while (!nh.connected()) {
+    while (!nh.connected() || digitalRead(PF13)) {
         nh.spinOnce(); 
         delay(50); 
         digitalWrite(LED_RED, bms->getVoltage() < MIN_BATT_VOLTAGE);

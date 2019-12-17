@@ -36,7 +36,7 @@
  * Open Pull Request here: https://github.com/stm32duino/STM32Ethernet
  */
 // #define USE_ETHERNET
-#define DEBUG_PRINT
+// #define RELEASE_MODE
 #define ALLOW_DIRECT_CONTROL
 #define ENABLE_SONARS
 #define ENABLE_PRES_SENSOR
@@ -82,10 +82,10 @@
 #include <ping1d.h>
 #include <transformations.h>
 #include <BatteryMonitor.h>
-#include <AutoPID.h>
 #include <math.h>
 #include <Wire.h>
 #include <MS5837.h>
+#include <Controller6DOF.h>
 /* *************************** Includes *************************** */
 
 
@@ -100,12 +100,10 @@ void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
 void GetPIDControllerParameters();
-void UpdatePIDControllerGains();
 void PerformHaltModeCheck();
 void InitMotors();
 void ResetMotors();
 void PublishInfo(String msg);
-void RunPIDControllers(double* output, double dt);
 void EvaluateCommand(String type, String content);
 void InitializeIndicatorTimer(uint32_t frequency);
 bool TimeoutDetector();
@@ -119,6 +117,8 @@ bool CheckBattery();
 void HandlePressureSensorRoutine();
 void InitPressureSensor();
 void InitializeTimers();
+void InitController();
+void LogStartUpInfo();
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -136,6 +136,7 @@ HardwareTimer *CurrentCounterTimer;
 HardwareTimer *PingSonarTimer;
 HardwareTimer *PublishTimer;
 HardwareTimer *PressureTimer;
+HardwareTimer *PIDTimer;
 
 /* PING SONAR CONFIGURATION
  */
@@ -149,7 +150,6 @@ MS5837 pressure_sensor;
  * currently, mainboard does not support such features
  * therefore these features are not tested yet.
  */
-
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
 int aux_pinmap[3] = {PD12, PD13, PD14};
 
@@ -157,26 +157,9 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
  */
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
-bool motor_armed = false;
+bool motor_armed = true;
 
-/**
- * @brief PID Controllers
- * 
- */
-float thruster_allocation[6][8];
-float pid_gains[6][3];
-double v[6] = {0, 0, 0, 0, 0, 0}; // Velocity & Ang. Velocity in 6 DOF.
-double n[6] = {0, 0, 0, 0, 0, 0}; // Position & Orientation in 6 DOF.
-double velocity_setpoint[6] = {0, 0, 0, 0, 0, 0};
-unsigned long last_odom_update = millis();
-AutoPID controllers[6] = {
-    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Pos_X
-    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Pos_Y
-    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Pos_Z
-    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Rot_X
-    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0), // Rot_Y
-    AutoPID(-MOTOR_PULSE_RANGE, MOTOR_PULSE_RANGE, 1.0, 0.0, 0.0) // Rot_Z
-    };
+Controller6DOF controller;
 
 /**
  * @brief Publisher Messages
@@ -293,11 +276,11 @@ void GetThrusterAllocationMatrix()
 
     for (size_t i = 0; i < 6; i++)
     {
-        if (!nh.getParam(alloc_param_names[i], thruster_allocation[i], 8)) 
+        if (!nh.getParam(alloc_param_names[i], controller.thruster_allocation[i], 8)) 
         { 
             for (size_t j = 0; j < 8; j++)
             {
-                thruster_allocation[i][j]= 0;
+                controller.thruster_allocation[i][j]= 0;
             }
         }
     }
@@ -309,29 +292,21 @@ void GetPIDControllerParameters()
         "~pid_rx", "~pid_ry", "~pid_rz"};
     for (size_t i = 0; i < 6; i++)
     {
-        if (!nh.getParam(pid_param_names[i], pid_gains[i], 3, 5000)) 
+        if (!nh.getParam(pid_param_names[i], controller.pid_gains[i], 3, 5000)) 
         { 
             for (size_t j = 0; j < 3; j++)
             {
-                pid_gains[i][j]= 0.0;
+                controller.pid_gains[i][j]= 0.0;
             }
         }
     }
-}
-
-void UpdatePIDControllerGains()
-{
-    for (size_t i = 0; i < 6; i++)
-    {
-        controllers[i].setGains((double)pid_gains[i][0], (double)pid_gains[i][1], (double)pid_gains[i][2]);
-    }
-    
+    controller.update_gains();
 }
 
 void PerformHaltModeCheck()
 {
     // Connection is up, skip mode check.
-    if (nh.connected()) return;
+    if (nh.connected() && !digitalRead(PF13)) return;
     bool last_motor_armed = motor_armed;
 
     motor_armed = false;
@@ -340,28 +315,34 @@ void PerformHaltModeCheck()
     digitalWrite(LED_GREEN, LOW);
     digitalWrite(LED_BLUE, LOW);
     IndicatorTimer->pause();
+    PIDTimer->pause();
+    PublishTimer->pause();
+
     ResetMotors();
     ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
 
-    while (!nh.connected()) {
+    while (!nh.connected() || digitalRead(PF13)) {
         nh.spinOnce(); 
         delay(50); 
         digitalWrite(LED_RED, bms->getVoltage() < MIN_BATT_VOLTAGE);
     }
 
+    // TODO, TEMP, FIX: this is temporary
+    // since the stm is never rebooted, the stm must
+    // exchange the new parameters with the Xavier / Host.
+    GetPIDControllerParameters();
+    LogStartUpInfo();
+
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
     motor_armed = last_motor_armed;
     IndicatorTimer->resume();
+    PIDTimer->resume();
+    PublishTimer->resume();
 
-    GetPIDControllerParameters();
-    UpdatePIDControllerGains();
-    nh.logwarn(String(pid_gains[0][0]).c_str());
-    debugln(String(pid_gains[0][0]).c_str());
+    // Display info
     debugln("[HALT_MODE] OFF! (Normal Operation)");
-
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
-
 }
 
 /* Initialize and Attach motors to spesified pins.
@@ -383,28 +364,6 @@ void ResetMotors()
     for (size_t i = 0; i < 8; i++)
     {
         motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
-    }
-}
-
-void RunPIDControllers(double* output, unsigned long dt)
-{
-    for (size_t i = 0; i < 6; i++)
-    {
-        if (i == 3 || i == 4)
-        {
-            // Roll and Pitch Controllers are position controller.
-            output[i] = controllers[i].run(0.0, n[i], dt);
-        }
-        // TEMP: This is for Z depth control, only using Ping sonar for now.
-        else if (i == 2)
-        {
-             output[i] = controllers[i].run(velocity_setpoint[i], bottom_sonar.distance() / 1000.0, dt);
-        }
-        else
-        {
-            // Others follow cmd_vel topic.
-            output[i] = controllers[i].run(velocity_setpoint[i], v[i], dt);
-        }
     }
 }
 
@@ -463,7 +422,7 @@ void HandlePressureSensorRoutine()
     int bar30_stat = pressure_sensor.readNonBlocking();
     if (bar30_stat == 1 && pressure_sensor.getPublishFlag())
     {
-        Serial.println(pressure_sensor.depth());
+        // Serial.println(pressure_sensor.depth());
         // publish sensor.depth();
         pressure_sensor.setPublishFlag(false);
     }
@@ -504,6 +463,16 @@ void InitializeTimers()
     PressureTimer->attachInterrupt(HardwareTimer_Callback);
     PressureTimer->resume();
     #endif
+
+    PIDTimer = new HardwareTimer(PID_TIMER);
+    PIDTimer->setOverflow(PID_LOOP_RATE, HERTZ_FORMAT);
+    PIDTimer->attachInterrupt(HardwareTimer_Callback);
+    PIDTimer->resume();
+}
+
+void InitController()
+{
+    controller.set_dt(1000.0 / PID_LOOP_RATE);
 }
 
 /* Motor Timeout Detector

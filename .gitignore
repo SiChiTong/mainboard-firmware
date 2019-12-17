@@ -6,3 +6,6 @@
 .pioenvs
 .piolibdeps
 .DS_Store
+.vscode/extensions.json
+.vscode/launch.json
+.vscode/c_cpp_properties.json

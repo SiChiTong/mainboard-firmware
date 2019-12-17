@@ -1,0 +1,54 @@
+{
+    "editor.renderWhitespace": "all",
+    "terminal.integrated.env.osx": {
+        "PATH": "/Users/senceryazici/.platformio/penv/bin:/Users/senceryazici/.platformio/penv:/Library/Frameworks/Python.framework/Versions/3.7/bin:/opt/ros/melodic/bin:/usr/local/Cellar/qt/5.12.2/bin:/Users/senceryazici/catkin_ws/devel/bin:/usr/local≈/bin:/usr/local/opt/openssl/bin:/opt/local/bin:/opt/local/sbin:/Library/Frameworks/Python.framework/Versions/2.7/bin:/usr/local/share/dotnet/:/Library/Frameworks/Mono.framework/Versions/Current/bin/:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/usr/local/bin:~/.platformio/penv/bin",
+        "PLATFORMIO_CALLER": "vscode"
+    },
+    "files.associations": {
+        "__bit_reference": "cpp",
+        "__hash_table": "cpp",
+        "__split_buffer": "cpp",
+        "__tree": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "initializer_list": "cpp",
+        "iterator": "cpp",
+        "list": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "functional": "cpp",
+        "istream": "cpp",
+        "ostream": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "usbh_ctlreq.h": "c"
+    },
+    "python.autoComplete.extraPaths": [
+        "/opt/ros/melodic/lib/python2.7/site-packages",
+        "/Users/senceryazici/Local Documents/ituauv/workspace/devel/lib/python2.7/site-packages",
+        "/Users/senceryazici/Local Documents/auv/auv_ws/devel/lib/python2.7/site-packages",
+        "/Applications/VREP/v_repStubsGen",
+        "/opt/ros/melodic/lib/python2.7/site-packages",
+        "/Users/senceryazici/catkin_ws/devel/lib/python2.7/site-packages"
+    ],
+    "python.pythonPath": "/Users/senceryazici/.platformio/penv/bin/python3",
+    "ego.power-tools":
+    {
+        "buttons":
+        [
+            {
+                "text": "Upload To Nvidia Jetson Xavier",
+                "action":
+                {
+                    "type": "shell",
+                    "command": "~/rfs . senceryazici 192.168.2.100 /home/senceryazici/auv2020/src/mainboard-firmware"
+                }
+            }
+        ]
+    }
+}

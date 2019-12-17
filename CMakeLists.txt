@@ -54,6 +54,7 @@ add_message_files(
   FILES
   Signal.msg
   Odometry.msg
+  StringStamped.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -166,6 +167,7 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
   scripts/serial_node.py
+  scripts/nucleo_status_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <launch>
-
     <arg name="connection" default="/dev/ttySTM _baud:=921600"/>
+
+    <include file="$(find mainboard_firmware)/launch/nucleo_status.launch"/>
+
     <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="$(arg connection)" output="screen" respawn="true">
         <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
     </node>
 </launch>
-

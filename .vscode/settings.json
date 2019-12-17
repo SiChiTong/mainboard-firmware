@@ -46,7 +46,7 @@
                 "action":
                 {
                     "type": "shell",
-                    "command": "~/rfs . nvidia 192.168.1.175 /home/nvidia/auv2020/src/mainboard-firmware"
+                    "command": "./scripts/rfs . nvidia 192.168.1.175 /home/nvidia/auv2020/src/mainboard-firmware"
                 }
             }
         ]

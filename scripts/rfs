@@ -1,0 +1,24 @@
+#!/bin/sh
+
+###########################################
+####### PlatformIO Remote Uploading #######
+###########################################
+
+if [[ $1 = "-h" ]]; then
+    echo "Usage"
+    echo "$0 local_folder remote_username remote_ip remote_folder"
+    exit 1
+fi
+
+PROJ_DIR=$1
+REMOTE_IP=$3
+REMOTE_PROJ_DIR=$4
+REMOTE_UNAME=$2
+
+REMOTE_FULL_PATH=${REMOTE_UNAME}@${REMOTE_IP}:${REMOTE_PROJ_DIR}
+
+echo "CURRENT PROJECT DIRECTORY:" $PROJ_DIR
+echo "REMOTE LOCATION:" $REMOTE_FULL_PATH
+
+scp -r ${PROJ_DIR}/* ${REMOTE_FULL_PATH}
+ssh ${REMOTE_UNAME}@${REMOTE_IP} "cd ${REMOTE_PROJ_DIR}; pio run --target upload"

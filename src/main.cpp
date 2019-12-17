@@ -25,14 +25,19 @@
 // perform all arming failure calculations in there.
 // put systemwatchdog in there.
 
+double setp[6];
+double n[6];
+double v[6];
+
 void odometry_callback(const mainboard_firmware::Odometry& data)
 {
-    double n[6];
-    double v[6];
     debugln("[ODOMETRY]      " + String(millis()));
     n[0] = data.pose.position.x;
     n[1] = data.pose.position.y;
     n[2] = data.pose.position.z;
+    n[2] = bottom_sonar.distance() / 1000;
+    
+    // n[2] = 1.0;/
     // The conversion must be done in main computer / host.
     // define custom message type.
     geometry_msgs::Vector3 euler = EulerFromQuaternion(data.pose.orientation);
@@ -43,21 +48,17 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
     v[0] = data.twist.linear.x;
     v[1] = data.twist.linear.y;
     v[2] = data.twist.linear.z;
-
     v[3] = data.twist.angular.x;
     v[4] = data.twist.angular.y;
     v[5] = data.twist.angular.z;
-
+    
     controller.set_velocity(v);
     controller.set_position(n);
-    delete[] n;
-    delete[] v;
 }
 
 void cmd_vel_callback(const geometry_msgs::Twist& data)
 {
     last_motor_update = millis();
-    double setp[6];
     setp[0] = data.linear.x;
     setp[1] = data.linear.y;
     setp[2] = data.linear.z;
@@ -65,20 +66,9 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
     setp[4] = data.angular.y;
     setp[5] = data.angular.z;
 
-    setp[2] = bottom_sonar.distance() / 1000;
     setp[3] = 0; 
     setp[4] = 0;
     controller.set_velocity_reference(setp);
-
-
-    debug("[CMD_VEL] [" + String(millis()) + "] ");
-    for (size_t i = 0; i < 6; i++)
-    {
-        debug(setp[i]);
-        debug(" ");
-    }
-    debugln("");
-    delete[] setp;
 }
 
 /* Motor value update callback
@@ -184,30 +174,15 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
         controller.set_dt(1000.0 / PID_LOOP_RATE);
         controller.run();
 
-        debug("[PID_CONTROLLER]");
-
-        for (size_t i = 0; i < 6; i++)
-        {
-            debug(controller.get_output()[i]);
-            debug(" ");
-        }
-        debugln("");
-
-
-        debug("[THRUST_VECTOR] ");
         if (motor_armed)
         {
+            double *thrust = controller.get_thrust_vector();
             for (size_t i = 0; i < 8; i++)
             {
-                double *thrust = controller.get_thrust_vector();
-                
                 int motor_pulse_us = get_pwm(thrust[i], thruster_direction[i]);
                 motor_pulse_us = constrain(motor_pulse_us, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
                 motors[i].writeMicroseconds(motor_pulse_us);
-                debug(thrust[i]);
-                debug(" ");
             }
-            debugln("");
         }
     }
     else

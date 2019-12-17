@@ -23,7 +23,6 @@
 #include <Arduino.h>
 
 #define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.
-#define GLOBAL_PUBLISH_RATE              2                         // Used for batterystate / currents etc.
 
 /* ******************* Communication Settings ******************* */
 #define ROS_BAUDRATE                     921600                    // Ros Communication Baud Rate
@@ -73,7 +72,12 @@
 #define FLUID_DENSITY                    997                       // (freshwater, 1029 for seawater)
 /* ***************** Pressure Sensor Settings ******************* */
 
-/* ***************** Pressure Sensor Settings ******************* */
-#define PID_TIMER                        TIM13
+/* *********************** PID Settings ************************* */
+#define PID_TIMER                        TIM14                     // Dont use Timer 13.
 #define PID_LOOP_RATE                    80.0
-/* ***************** Pressure Sensor Settings ******************* */
+/* *********************** PID Settings ************************* */
+
+/* ********************* Publish Settings *********************** */
+#define PUBLISH_TIMER                    TIM10                     // Used for Publish timer
+#define GLOBAL_PUBLISH_RATE              2                         // Used for batterystate / currents etc.
+/* ********************* Publish Settings *********************** */

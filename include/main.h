@@ -157,7 +157,7 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
  */
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
-bool motor_armed = false;
+bool motor_armed = true;
 
 Controller6DOF controller;
 
@@ -315,6 +315,9 @@ void PerformHaltModeCheck()
     digitalWrite(LED_GREEN, LOW);
     digitalWrite(LED_BLUE, LOW);
     IndicatorTimer->pause();
+    PIDTimer->pause();
+    PublishTimer->pause();
+
     ResetMotors();
     ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
@@ -325,17 +328,19 @@ void PerformHaltModeCheck()
         digitalWrite(LED_RED, bms->getVoltage() < MIN_BATT_VOLTAGE);
     }
 
-    /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
-    motor_armed = last_motor_armed;
-    IndicatorTimer->resume();
-
     // TODO, TEMP, FIX: this is temporary
     // since the stm is never rebooted, the stm must
     // exchange the new parameters with the Xavier / Host.
     GetPIDControllerParameters();
+    LogStartUpInfo();
+
+    /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
+    motor_armed = last_motor_armed;
+    IndicatorTimer->resume();
+    PIDTimer->resume();
+    PublishTimer->resume();
 
     // Display info
-    LogStartUpInfo();
     debugln("[HALT_MODE] OFF! (Normal Operation)");
     /* *** RECOVERED CONNECTION, BACK TO NORMAL *** */
 }
@@ -417,7 +422,7 @@ void HandlePressureSensorRoutine()
     int bar30_stat = pressure_sensor.readNonBlocking();
     if (bar30_stat == 1 && pressure_sensor.getPublishFlag())
     {
-        Serial.println(pressure_sensor.depth());
+        // Serial.println(pressure_sensor.depth());
         // publish sensor.depth();
         pressure_sensor.setPublishFlag(false);
     }

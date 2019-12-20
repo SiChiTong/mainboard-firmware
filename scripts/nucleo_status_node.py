@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import rospy
-from xavier_stats.msg import StringStamped
+from mainboard_firmware.msg import StringStamped
 import serial
 
 

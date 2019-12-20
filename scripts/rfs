@@ -20,5 +20,6 @@ REMOTE_FULL_PATH=${REMOTE_UNAME}@${REMOTE_IP}:${REMOTE_PROJ_DIR}
 echo "CURRENT PROJECT DIRECTORY:" $PROJ_DIR
 echo "REMOTE LOCATION:" $REMOTE_FULL_PATH
 
-scp -r ${PROJ_DIR}/* ${REMOTE_FULL_PATH}
-ssh ${REMOTE_UNAME}@${REMOTE_IP} "cd ${REMOTE_PROJ_DIR}; pio run --target upload"
+scp -r ${PROJ_DIR}/.pio/build/nucleo_f429zi/firmware.bin ${REMOTE_FULL_PATH}
+
+ssh ${REMOTE_UNAME}@${REMOTE_IP} "cd ${REMOTE_PROJ_DIR}; echo nvidia | sudo -S python3 scripts/pystlink/pystlink.py flash:erase:verify:firmware.bin"

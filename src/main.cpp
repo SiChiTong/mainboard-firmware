@@ -31,19 +31,19 @@ double v[6];
 
 void odometry_callback(const mainboard_firmware::Odometry& data)
 {
-    debugln("[ODOMETRY]      " + String(millis()));
     n[0] = data.pose.position.x;
     n[1] = data.pose.position.y;
-    n[2] = data.pose.position.z;
-    n[2] = bottom_sonar.distance() / 1000;
-    
+    // n[2] = bottom_sonar.distance() / 1000;
+    n[2] = -pressure_sensor.depth();
+    // debugln(-pressure_sensor.depth());
     // n[2] = 1.0;/
     // The conversion must be done in main computer / host.
     // define custom message type.
     geometry_msgs::Vector3 euler = EulerFromQuaternion(data.pose.orientation);
     n[3] = euler.x;
     n[4] = euler.y;
-    n[5] = euler.z;
+    n[5] = data.twist.angular.z;
+    // n[5] = euler.z;
 
     v[0] = data.twist.linear.x;
     v[1] = data.twist.linear.y;

@@ -422,7 +422,7 @@ void HandlePressureSensorRoutine()
     int bar30_stat = pressure_sensor.readNonBlocking();
     if (bar30_stat == 1 && pressure_sensor.getPublishFlag())
     {
-        // Serial.println(pressure_sensor.depth());
+        // debugln(pressure_sensor.depth());
         // publish sensor.depth();
         pressure_sensor.setPublishFlag(false);
     }
@@ -569,7 +569,7 @@ void InitializePingSonarDevices()
 void InitializeBatteryMonitor()
 {
     bms = new BatteryMonitor(&battery_state);
-    bms->initBattery(BatteryMonitor::TURNIGY_5000);
+    bms->initBattery(BatteryMonitor::CUSTOM_LIION);
 }
 
 void HandlePingSonarRequests()

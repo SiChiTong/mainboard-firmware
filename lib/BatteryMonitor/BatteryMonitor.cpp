@@ -46,7 +46,10 @@ double BatteryMonitor::getCurrent()
 {
     return current_;
 }
-
+int BatteryMonitor::getCurrentConsumption()
+{
+    return (int)current_consumption_;
+}
 
 void BatteryMonitor::publish(ros::Time now)
 {
@@ -93,7 +96,7 @@ void BatteryMonitor::initBattery(BatteryModel model)
         msg.header.frame_id = "/base_link";
         msg.location = "back_tube";
         msg.design_capacity = 27000;
-        msg.serial_number = "ITU-AUV/US18650VTC6-4S9P";
+        msg.serial_number = "ITU-AUV/US18650VTC6-4S9P-LIION-V1-0";
         msg.present = true;
         msg.power_supply_health = sensor_msgs::BatteryState::POWER_SUPPLY_HEALTH_UNKNOWN;
         msg.power_supply_status = sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;

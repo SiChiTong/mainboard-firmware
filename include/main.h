@@ -177,7 +177,7 @@ sensor_msgs::BatteryState battery_msg;
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
-ros::Publisher depth_pub("/turquoise/sensor/depth",&depth_msg);
+ros::Publisher depth_pub("/turquoise/sensors/depth",&depth_msg);
 
 /**
  * @brief Subscribers
@@ -428,7 +428,7 @@ void HandlePressureSensorRoutine()
         // debugln(pressure_sensor.depth());
         // publish sensor.depth();
         depth_msg.data = pressure_sensor.depth();
-        nh.publish(depth_pub);
+        depth_pub.publish(&depth_msg);
         pressure_sensor.setPublishFlag(false);
     }
     #endif

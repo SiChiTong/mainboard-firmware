@@ -167,6 +167,7 @@ Controller6DOF controller;
 std_msgs::String info_msg;
 std_msgs::String error_msg;
 std_msgs::Float32MultiArray current_msg;
+std_msgs::Float32 depth_msg;
 sensor_msgs::Range range_msg;
 sensor_msgs::BatteryState battery_msg;
 
@@ -176,6 +177,7 @@ sensor_msgs::BatteryState battery_msg;
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
+ros::Publisher depth_pub("/turquoise/sensors/depth",&depth_msg);
 
 /**
  * @brief Subscribers
@@ -246,6 +248,7 @@ void PerformUARTControl()
 void InitSubPub()
 {
     nh.advertise(motor_currents);
+    nh.advertise(depth_pub);
 
     /* *** Sonar Publishers *** */
     #if defined(ENABLE_SONARS)
@@ -424,6 +427,8 @@ void HandlePressureSensorRoutine()
     {
         // debugln(pressure_sensor.depth());
         // publish sensor.depth();
+        depth_msg.data = pressure_sensor.depth();
+        depth_pub.publish(&depth_msg);
         pressure_sensor.setPublishFlag(false);
     }
     #endif

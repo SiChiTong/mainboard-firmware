@@ -414,7 +414,8 @@ void InitPressureSensor()
     pressure_sensor.setOverSampling(MS5837_CONVERT_OVERSAMPLING::OSR_8192); // set oversampling to OSR_8192
     while (!pressure_sensor.init())
     {
-        delay(100);
+        debugln("[MS5837_INIT_ERR]");
+        delay(1000);
     }
     #endif
 }

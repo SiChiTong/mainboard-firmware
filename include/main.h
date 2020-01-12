@@ -177,7 +177,7 @@ sensor_msgs::BatteryState battery_msg;
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
-ros::Publisher depth_pub("/turquoise/sensors/depth",&depth_msg);
+ros::Publisher depth_pub("/turquoise/depth",&depth_msg);
 
 /**
  * @brief Subscribers

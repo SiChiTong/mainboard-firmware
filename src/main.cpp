@@ -164,6 +164,7 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
         bms->raisePublishFlag();
         bottom_sonar.PublishFlag = true;
         pressure_sensor.setPublishFlag(true);
+        armed_publish_flag = true;
     }
     else if (htim == PressureTimer)
     {
@@ -242,6 +243,7 @@ void loop()
     PerformUARTControl();
     HandlePingSonarRequests();
     HandlePressureSensorRoutine();
+    HandleArmedPublish();
 
     // PublishMotorCurrents(1);
     nh.spinOnce();

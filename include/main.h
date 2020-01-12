@@ -24,15 +24,15 @@
 /* DEPRECEATED, DO NOT USE ETHERNET MODE.
  * Built in PlatformIO packages for ststm32
  * and framework-arduinoststm32 have been updated
- * to last version, and the last version does not 
- * support s_timer types and TypeDefs, they've 
- * implemented a new HardwareTimer class, 
- * thus Stm32Ethernet library is no longer 
- * working. 
- * HardwareTimer Library: 
+ * to last version, and the last version does not
+ * support s_timer types and TypeDefs, they've
+ * implemented a new HardwareTimer class,
+ * thus Stm32Ethernet library is no longer
+ * working.
+ * HardwareTimer Library:
  * https://github.com/stm32duino/wiki/wiki/HardwareTimer-library#Introduction
- * 
- * 
+ *
+ *
  * Open Pull Request here: https://github.com/stm32duino/STM32Ethernet
  */
 // #define USE_ETHERNET
@@ -118,6 +118,7 @@ void HandlePressureSensorRoutine();
 void InitPressureSensor();
 void InitializeTimers();
 void InitController();
+void HandleArmedPublish();
 void LogStartUpInfo();
 
 /* *************************** Variables *************************** */
@@ -158,6 +159,7 @@ int aux_pinmap[3] = {PD12, PD13, PD14};
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
 bool motor_armed = true;
+bool armed_publish_flag = false;
 
 Controller6DOF controller;
 
@@ -170,6 +172,7 @@ std_msgs::Float32MultiArray current_msg;
 std_msgs::Float32 depth_msg;
 sensor_msgs::Range range_msg;
 sensor_msgs::BatteryState battery_msg;
+std_msgs::Bool armed_msg;
 
 /**
  * @brief Publishers
@@ -177,7 +180,8 @@ sensor_msgs::BatteryState battery_msg;
 ros::Publisher motor_currents("/turquoise/thrusters/current", &current_msg);
 ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
-ros::Publisher depth_pub("/turquoise/depth",&depth_msg);
+ros::Publisher depth_pub("/turquoise/depth", &depth_msg);
+ros::Publisher armed_pub("/turquoise/is_armed", &armed_msg);
 
 /**
  * @brief Subscribers
@@ -249,6 +253,7 @@ void InitSubPub()
 {
     nh.advertise(motor_currents);
     nh.advertise(depth_pub);
+    nh.advertise(armed_pub);
 
     /* *** Sonar Publishers *** */
     #if defined(ENABLE_SONARS)
@@ -626,6 +631,16 @@ void InitializeCurrentsMessage()
     // current_msg.layout.dim_length = 1;
     current_msg.data_length = 8;
     current_msg.data = (float *)malloc(sizeof(float)*8);
+}
+
+void HandleArmedPublish()
+{
+    if (armed_publish_flag)
+    {
+        armed_publish_flag = false;
+        armed_msg.data = motor_armed;
+        armed_pub.publish(&armed_msg);
+    }
 }
 
 void LogStartUpInfo()

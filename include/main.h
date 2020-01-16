@@ -38,9 +38,11 @@
 // #define USE_ETHERNET
 // #define RELEASE_MODE
 #define ALLOW_DIRECT_CONTROL
-#define ENABLE_SONARS
-#define ENABLE_PRES_SENSOR
+// #define ENABLE_SONARS
+// #define ENABLE_PRES_SENSOR
+// #define ENABLE_KILLSWITCH
 #define ENABLE_CUSTOM_SERVO
+#define ENABLE_CPU_LOAD_MEASURING
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
@@ -67,6 +69,7 @@
 #include <ros/time.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/Int8.h>
 #include <std_msgs/Int16MultiArray.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <std_msgs/MultiArrayDimension.h>
@@ -86,6 +89,7 @@
 #include <Wire.h>
 #include <MS5837.h>
 #include <Controller6DOF.h>
+#include <tm_stm32f4_cpu_load.h>
 /* *************************** Includes *************************** */
 
 
@@ -146,6 +150,7 @@ static Ping1D bottom_sonar { hwserial_3 };
 
 BatteryMonitor *bms;
 MS5837 pressure_sensor;
+TM_CPULOAD_t cpu_load;
 
 /* This section includes pinmaps for current sensors and auxilary channel pinmaps
  * currently, mainboard does not support such features
@@ -166,13 +171,12 @@ Controller6DOF controller;
 /**
  * @brief Publisher Messages
  */
-std_msgs::String info_msg;
-std_msgs::String error_msg;
 std_msgs::Float32MultiArray current_msg;
 std_msgs::Float32 depth_msg;
 sensor_msgs::Range range_msg;
 sensor_msgs::BatteryState battery_msg;
 std_msgs::Bool armed_msg;
+std_msgs::Int8 cpu_load_msg;
 
 /**
  * @brief Publishers
@@ -182,6 +186,7 @@ ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
 ros::Publisher depth_pub("/turquoise/depth", &depth_msg);
 ros::Publisher armed_pub("/turquoise/is_armed", &armed_msg);
+ros::Publisher cpu_load_pub("/turquoise/nucleo/cpu_load", &cpu_load_msg);
 
 /**
  * @brief Subscribers
@@ -190,7 +195,6 @@ ros::Publisher armed_pub("/turquoise/is_armed", &armed_msg);
 ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/input", &motor_callback);
 #endif
 ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &command_callback);
-// ros::Subscriber<mainboard_firmware::Odometry> odom_subscriber("/turquoise/odom", odometry_callback);
 ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 
@@ -255,6 +259,9 @@ void InitSubPub()
     nh.advertise(depth_pub);
     nh.advertise(armed_pub);
 
+    #ifdef ENABLE_CPU_LOAD_MEASURING
+    nh.advertise(cpu_load_pub);
+    #endif
     /* *** Sonar Publishers *** */
     #if defined(ENABLE_SONARS)
     nh.advertise(bottom_sonar_pub);
@@ -314,7 +321,12 @@ void GetPIDControllerParameters()
 void PerformHaltModeCheck()
 {
     // Connection is up, skip mode check.
-    if (nh.connected() && !digitalRead(PF13)) return;
+    #ifdef ENABLE_KILLSWITCH
+    bool killswitch = digitalRead(PF13);
+    #else
+    bool killswitch = false;
+    #endif
+    if (nh.connected() && !killswitch) return;
     bool last_motor_armed = motor_armed;
 
     motor_armed = false;
@@ -330,7 +342,7 @@ void PerformHaltModeCheck()
     ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
 
-    while (!nh.connected() || digitalRead(PF13)) {
+    while (!nh.connected() || killswitch) {
         nh.spinOnce(); 
         delay(50); 
         digitalWrite(LED_RED, bms->getVoltage() < MIN_BATT_VOLTAGE);
@@ -540,6 +552,13 @@ bool CheckBattery()
 
 void SystemWatchdog()
 {
+    #ifdef ENABLE_CPU_LOAD_MEASURING
+    if (TM_CPULOAD_GoToSleepMode(&cpu_load) == 1)
+    {
+        cpu_load_msg.data = (uint8_t)cpu_load.Load;
+        cpu_load_pub.publish(&cpu_load_msg);
+    }
+    #endif
     TimeoutDetector();
     bool _batt = CheckBattery();
     digitalWrite(LED_RED, !_batt);

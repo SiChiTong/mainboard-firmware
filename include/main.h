@@ -94,7 +94,7 @@ void cmd_vel_callback(const geometry_msgs::Twist& data);
 void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
-void cmd_depth_callback(const geometry_msgs::Twist& data);
+void cmd_depth_callback(const std_msgs::Float32& data);
 
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
@@ -191,7 +191,7 @@ ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &co
 // ros::Subscriber<mainboard_firmware::Odometry> odom_subscriber("/turquoise/odom", odometry_callback);
 ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
-ros::Subscriber<geometry_msgs::Twist> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
+ros::Subscriber<std_msgs::Float32> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
 
 /**
  * @brief Services

@@ -63,6 +63,7 @@ public:
     ~Controller6DOF();
     double *get_position();
     double *get_velocity();
+    double *get_velocity_reference();
     double get_dt();
     double set_dt(double _dt);
     double set_velocity_reference(double *vel_ref);

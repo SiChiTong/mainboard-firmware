@@ -60,7 +60,7 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
 {
     for (size_t i = 0; i < 6; i++)
     {
-        setp[i] = controller.get_velocity()[i];
+        setp[i] = controller.get_velocity_reference()[i];
     }
     
     last_motor_update = millis();
@@ -80,7 +80,7 @@ void cmd_depth_callback(const geometry_msgs::Twist& data)
 {
     for (size_t i = 0; i < 6; i++)
     {
-        setp[i] = controller.get_velocity()[i];
+        setp[i] = controller.get_velocity_reference()[i];
     }
 
     setp[2] = data.linear.z;

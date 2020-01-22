@@ -34,6 +34,11 @@ double *Controller6DOF::get_velocity()
     return v;
 }
 
+double *Controller6DOF::get_velocity_reference()
+{
+    return velocity_setpoint;
+}
+
 double Controller6DOF::set_velocity(double *vel)
 {
     for (size_t i = 0; i < 6; i++)

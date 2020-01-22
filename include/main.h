@@ -94,6 +94,8 @@ void cmd_vel_callback(const geometry_msgs::Twist& data);
 void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
+void cmd_depth_callback(const geometry_msgs::Twist& data);
+
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
 void InitNode();
@@ -189,7 +191,7 @@ ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &co
 // ros::Subscriber<mainboard_firmware::Odometry> odom_subscriber("/turquoise/odom", odometry_callback);
 ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
-
+ros::Subscriber<geometry_msgs::Twist> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
 
 /**
  * @brief Services
@@ -266,6 +268,7 @@ void InitSubPub()
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
 
+    nh.subscribe(cmd_depth_sub);
 
     nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(arming_srv);
 
@@ -414,7 +417,8 @@ void InitPressureSensor()
     pressure_sensor.setOverSampling(MS5837_CONVERT_OVERSAMPLING::OSR_8192); // set oversampling to OSR_8192
     while (!pressure_sensor.init())
     {
-        delay(100);
+        debugln("[MS5837_INIT_ERR]");
+        delay(1000);
     }
     #endif
 }

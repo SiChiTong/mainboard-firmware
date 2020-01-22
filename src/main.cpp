@@ -58,6 +58,11 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
 
 void cmd_vel_callback(const geometry_msgs::Twist& data)
 {
+    for (size_t i = 0; i < 6; i++)
+    {
+        setp[i] = controller.get_velocity()[i];
+    }
+    
     last_motor_update = millis();
     setp[0] = data.linear.x;
     setp[1] = data.linear.y;
@@ -68,6 +73,18 @@ void cmd_vel_callback(const geometry_msgs::Twist& data)
 
     setp[3] = 0; 
     setp[4] = 0;
+    controller.set_velocity_reference(setp);
+}
+
+void cmd_depth_callback(const geometry_msgs::Twist& data)
+{
+    for (size_t i = 0; i < 6; i++)
+    {
+        setp[i] = controller.get_velocity()[i];
+    }
+
+    setp[2] = data.linear.z;
+    
     controller.set_velocity_reference(setp);
 }
 

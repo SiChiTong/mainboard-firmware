@@ -46,7 +46,7 @@
         "/opt/ros/melodic/lib/python2.7/site-packages",
         "/Users/senceryazici/catkin_ws/devel/lib/python2.7/site-packages"
     ],
-    "python.pythonPath": "/home/hsnfurkn/.platformio/penv/bin/python",
+    "python.pythonPath": "/usr/bin/python",
     "ego.power-tools":
     {
         "buttons":

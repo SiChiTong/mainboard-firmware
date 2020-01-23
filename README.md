@@ -253,7 +253,11 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | PRESSURE_TIMER | TIM12 | Timer | The timer to check bar30 pressure sensor updates |
     | PRESSURE_INTERVAL | 10000 | uS | The time interval between each incremental time update for bar30 |
     | FLUID_DENSITY | 997 | kg/m^3 | Fluid density of the water, use 1029 for seawater |
-    
+    | AUX_LEN | 1 | Unit | AUX Channel Length |
+    | DEFAULT_AUX_PULSE_WIDTH | 1100 | uS | AUX Default Pulse |
+    | MIN_AUX_PULSE_WIDTH | 1100 | uS | AUX Minimum Pulse |
+    | MAX_AUX_PULSE_WIDTH | 1900 | uS | AUX Maximum Pulse |
+
 - [motor_config.h](include/motor_config.h)
 
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |

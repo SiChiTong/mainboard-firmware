@@ -55,6 +55,17 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
     controller.set_position(n);
 }
 
+void aux_callback(const std_msgs::Int16MultiArray& data)
+{
+    for (size_t i = 0; i < AUX_LEN; i++)
+    {
+        int aux_pulse_us = (int)data.data[i];
+        aux_pulse_us = constrain(aux_pulse_us, MIN_AUX_PULSE_WIDTH, MAX_AUX_PULSE_WIDTH);
+        aux[i].writeMicroseconds(aux_pulse_us);
+    }
+}
+
+
 void cmd_vel_callback(const geometry_msgs::Twist& data)
 {   
     last_motor_update = millis();
@@ -206,6 +217,7 @@ void setup()
     debugln("[ADC_RES]: " + String(ADC_READ_RESOLUTION_BIT));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
     InitMotors();
+    InitAux();
     InitializePeripheralPins();
     InitializeCurrentsMessage();
     InitializeBatteryMonitor();

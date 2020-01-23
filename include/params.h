@@ -81,3 +81,10 @@
 #define PUBLISH_TIMER                    TIM10                     // Used for Publish timer
 #define GLOBAL_PUBLISH_RATE              2                         // Used for batterystate / currents etc.
 /* ********************* Publish Settings *********************** */
+
+/* ******************* AUX Channel Settings ********************* */
+#define AUX_LEN                          1                         // AUX Channel Length
+#define DEFAULT_AUX_PULSE_WIDTH          1100                      // AUX Default Pulse
+#define MIN_AUX_PULSE_WIDTH              1100                      // AUX Minimum Pulse
+#define MAX_AUX_PULSE_WIDTH              1900                      // AUX Maximum Pulse
+/* ******************* AUX Channel Settings ********************* */

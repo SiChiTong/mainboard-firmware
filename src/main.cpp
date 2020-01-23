@@ -25,7 +25,6 @@
 // perform all arming failure calculations in there.
 // put systemwatchdog in there.
 
-double setp[6];
 double n[6];
 double v[6];
 
@@ -57,18 +56,19 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
 }
 
 void cmd_vel_callback(const geometry_msgs::Twist& data)
-{
+{   
     last_motor_update = millis();
-    setp[0] = data.linear.x;
-    setp[1] = data.linear.y;
-    setp[2] = data.linear.z;
-    setp[3] = data.angular.x;
-    setp[4] = data.angular.y;
-    setp[5] = data.angular.z;
 
-    setp[3] = 0; 
-    setp[4] = 0;
-    controller.set_velocity_reference(setp);
+    controller.set_velocity_reference_by_index(data.linear.x, 0);
+    controller.set_velocity_reference_by_index(data.linear.y, 1);
+    controller.set_velocity_reference_by_index(data.angular.z, 5);
+    // indexes of 2 3 4 are for linearz, angularx, angulary which are not set from this callback
+
+}
+
+void cmd_depth_callback(const std_msgs::Float32& data)
+{
+    controller.set_velocity_reference_by_index(data.data, 2);
 }
 
 /* Motor value update callback

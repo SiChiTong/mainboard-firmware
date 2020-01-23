@@ -66,6 +66,7 @@ public:
     double get_dt();
     double set_dt(double _dt);
     double set_velocity_reference(double *vel_ref);
+    double set_velocity_reference_by_index(double vel_ref, int index);
     double set_velocity(double *vel);
     double set_position(double *pos);
     double *get_thrust_vector();

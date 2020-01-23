@@ -95,6 +95,7 @@ void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 void cmd_depth_callback(const std_msgs::Float32& data);
+void aux_callback(const std_msgs::Int16MultiArray& data);
 
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
@@ -122,6 +123,7 @@ void InitializeTimers();
 void InitController();
 void HandleArmedPublish();
 void LogStartUpInfo();
+void InitAux();
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -131,6 +133,7 @@ ros::NodeHandle nh;
 /* Motors define.
  */
 Servo motors[8];
+Servo aux[AUX_LEN];
 
 /* HardwareTimers
  */
@@ -154,7 +157,7 @@ MS5837 pressure_sensor;
  * therefore these features are not tested yet.
  */
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
-int aux_pinmap[3] = {PD12, PD13, PD14};
+int aux_pinmap[AUX_LEN] = {PC10};
 
 /* Global Variables
  */
@@ -196,6 +199,7 @@ ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &co
 ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 ros::Subscriber<std_msgs::Float32> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
+ros::Subscriber<std_msgs::Int16MultiArray> aux_sub("/turquoise/aux", &aux_callback);
 
 /**
  * @brief Services
@@ -272,7 +276,7 @@ void InitSubPub()
     // FIXME: Does this lines effect odom callback ?
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
-
+    nh.subscribe(aux_sub);
     nh.subscribe(cmd_depth_sub);
 
     nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(arming_srv);
@@ -366,6 +370,16 @@ void InitMotors()
     {
         while (!motors[i].attached()) { motors[i].attach(motor_pinmap[i]); } 
         motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
+    }
+}
+
+void InitAux()
+{
+    debugln("[AUX_INIT] " + String(DEFAULT_AUX_PULSE_WIDTH) + " uS PULSE");
+    for (size_t i = 0; i < AUX_LEN; i++)
+    {
+        while (!aux[i].attached()) { aux[i].attach(aux_pinmap[i]); } 
+        aux[i].writeMicroseconds(DEFAULT_AUX_PULSE_WIDTH);
     }
 }
 

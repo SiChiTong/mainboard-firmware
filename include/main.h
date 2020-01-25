@@ -41,6 +41,7 @@
 #define ENABLE_SONARS
 #define ENABLE_PRES_SENSOR
 #define ENABLE_CUSTOM_SERVO
+#define FIRMWARE_VERSION "1.3"
 
 /* *************************** Includes *************************** */
 #include <Arduino.h>
@@ -479,7 +480,7 @@ void InitializeTimers()
     debugln("[CURRENT_COUNTING_TIMER_INIT]");
     #endif
 
-    PublishTimer = new HardwareTimer(TIM10);
+    PublishTimer = new HardwareTimer(PUBLISH_TIMER);
     PublishTimer->setOverflow(GLOBAL_PUBLISH_RATE, HERTZ_FORMAT);
     PublishTimer->attachInterrupt(HardwareTimer_Callback);
     PublishTimer->resume();
@@ -490,12 +491,14 @@ void InitializeTimers()
     PressureTimer->setOverflow(PRESSURE_INTERVAL, MICROSEC_FORMAT);
     PressureTimer->attachInterrupt(HardwareTimer_Callback);
     PressureTimer->resume();
+    debugln("[PRESSURE_TIMER_INIT]");
     #endif
 
     PIDTimer = new HardwareTimer(PID_TIMER);
     PIDTimer->setOverflow(PID_LOOP_RATE, HERTZ_FORMAT);
     PIDTimer->attachInterrupt(HardwareTimer_Callback);
     PIDTimer->resume();
+    debugln("[PID_TIMER_INIT]");
 }
 
 void InitController()
@@ -664,6 +667,7 @@ void LogStartUpInfo()
 {
     nh.logwarn("Z Depth is only using bottom_sonar measurement.");
     nh.logwarn("CMD_VEL.linear.z is a position parameter not speed, in meters, (m)");
+    nh.loginfo(String("Firmware version: " + String(FIRMWARE_VERSION)).c_str());
 }
 
 // End of file. Copyright (c) 2019 ITU AUV Team / Electronics

@@ -97,6 +97,7 @@ void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 void cmd_depth_callback(const std_msgs::Float32& data);
 void aux_callback(const std_msgs::Int16MultiArray& data);
+void dvl_callback(const std_msgs::String& data);
 
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
@@ -125,6 +126,7 @@ void InitController();
 void HandleArmedPublish();
 void LogStartUpInfo();
 void InitAux();
+void HandleDVLData();
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -149,6 +151,8 @@ HardwareTimer *PIDTimer;
  */
 HardwareSerial hwserial_3 = HardwareSerial(PE7, PE8);
 static Ping1D bottom_sonar { hwserial_3 };
+
+HardwareSerial dvl_serial = HardwareSerial(PE9, PE10);//Pins are not correct
 
 BatteryMonitor *bms;
 MS5837 pressure_sensor;
@@ -179,6 +183,7 @@ std_msgs::Float32 depth_msg;
 sensor_msgs::Range range_msg;
 sensor_msgs::BatteryState battery_msg;
 std_msgs::Bool armed_msg;
+std_msgs::String dvl_msg;
 
 /**
  * @brief Publishers
@@ -188,6 +193,7 @@ ros::Publisher bottom_sonar_pub("/turquoise/sensors/sonar/bottom", &range_msg);
 ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
 ros::Publisher depth_pub("/turquoise/depth", &depth_msg);
 ros::Publisher armed_pub("/turquoise/is_armed", &armed_msg);
+ros::Publisher dvl_pub("/turquoise/dvl/from", &dvl_msg);
 
 /**
  * @brief Subscribers
@@ -201,6 +207,7 @@ ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odom
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 ros::Subscriber<std_msgs::Float32> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
 ros::Subscriber<std_msgs::Int16MultiArray> aux_sub("/turquoise/aux", &aux_callback);
+ros::Subscriber<std_msgs::String> dvl_sub("/turquoise/dvt/to", &dvl_callback);
 
 /**
  * @brief Services
@@ -268,6 +275,7 @@ void InitSubPub()
     #endif
     
     nh.advertise(battery_state);
+    nh.advertise(dvl_pub);
 
     #if defined(ALLOW_DIRECT_CONTROL)
     nh.subscribe(motor_subs);
@@ -279,6 +287,7 @@ void InitSubPub()
     nh.subscribe(command_sub);
     nh.subscribe(aux_sub);
     nh.subscribe(cmd_depth_sub);
+    nh.subscribe(dvl_sub);
 
     nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(arming_srv);
 
@@ -381,6 +390,26 @@ void InitAux()
     {
         while (!aux[i].attached()) { aux[i].attach(aux_pinmap[i]); } 
         aux[i].writeMicroseconds(DEFAULT_AUX_PULSE_WIDTH);
+    }
+}
+
+void HandleDVLData()
+{
+    int last_char = 0;
+    String dvl_value = "";
+    
+    while (dvl_serial.available())
+    {
+        dvl_value = dvl_value + (char)dvl_serial.read();
+
+        if(dvl_serial.read() == 13 && last_char == 10)
+        {
+            dvl_msg.data = dvl_value.c_str();
+            dvl_pub.publish(&dvl_msg);
+            dvl_value = "";
+        }
+
+        last_char = dvl_serial.read();
     }
 }
 

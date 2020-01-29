@@ -55,6 +55,11 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
     controller.set_position(n);
 }
 
+void dvl_callback(const std_msgs::String& data)
+{
+    
+}
+
 void aux_callback(const std_msgs::Int16MultiArray& data)
 {
     for (size_t i = 0; i < AUX_LEN; i++)

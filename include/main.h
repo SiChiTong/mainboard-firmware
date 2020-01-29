@@ -35,7 +35,7 @@
  *
  * Open Pull Request here: https://github.com/stm32duino/STM32Ethernet
  */
-// #define USE_ETHERNET
+#define USE_ETHERNET
 // #define RELEASE_MODE
 #define ALLOW_DIRECT_CONTROL
 #define ENABLE_SONARS

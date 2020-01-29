@@ -400,7 +400,7 @@ void HandleDVLData()
     
     while (dvl_serial.available())
     {
-        dvl_value = dvl_value + (char)dvl_serial.read();
+        dvl_value = dvl_value + (String)dvl_serial.read();
 
         if(dvl_serial.read() == 13 && last_char == 10)
         {

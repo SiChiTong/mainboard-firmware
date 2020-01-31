@@ -152,7 +152,7 @@ HardwareTimer *PIDTimer;
 HardwareSerial hwserial_3 = HardwareSerial(PE7, PE8);
 static Ping1D bottom_sonar { hwserial_3 };
 
-HardwareSerial dvl_serial = HardwareSerial(PE9, PE10);//Pins are not correct
+HardwareSerial dvl_serial = HardwareSerial(PE10, PE12);
 
 BatteryMonitor *bms;
 MS5837 pressure_sensor;
@@ -402,7 +402,7 @@ void HandleDVLData()
     {
         dvl_value = dvl_value + (String)dvl_serial.read();
 
-        if(dvl_serial.read() == 13 && last_char == 10)
+        if((char)dvl_serial.read() == '\n' && (char)last_char == '\r')
         {
             dvl_msg.data = dvl_value.c_str();
             dvl_pub.publish(&dvl_msg);

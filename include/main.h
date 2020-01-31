@@ -87,6 +87,7 @@
 #include <Wire.h>
 #include <MS5837.h>
 #include <Controller6DOF.h>
+#include <DVL.h>
 /* *************************** Includes *************************** */
 
 
@@ -126,6 +127,7 @@ void InitController();
 void HandleArmedPublish();
 void LogStartUpInfo();
 void InitAux();
+void InitializeDVL();
 void HandleDVLData();
 
 /* *************************** Variables *************************** */
@@ -156,6 +158,7 @@ HardwareSerial dvl_serial = HardwareSerial(PE10, PE12);
 
 BatteryMonitor *bms;
 MS5837 pressure_sensor;
+DVL *dvl;
 
 /* This section includes pinmaps for current sensors and auxilary channel pinmaps
  * currently, mainboard does not support such features
@@ -393,23 +396,25 @@ void InitAux()
     }
 }
 
+void InitializeDVL()
+{
+    dvl = new DVL(&dvl_pub);
+}
+
 void HandleDVLData()
 {
-    int last_char = 0;
-    String dvl_value = "";
-    
     while (dvl_serial.available())
     {
-        dvl_value = dvl_value + (String)dvl_serial.read();
+        dvl->setCurrentChar((char)dvl_serial.read());
+        dvl->updateReceivedData();
 
-        if((char)dvl_serial.read() == '\n' && (char)last_char == '\r')
+        if(dvl->getLastChar() == '\r' && dvl->getCurrentChar() == '\n')
         {
-            dvl_msg.data = dvl_value.c_str();
-            dvl_pub.publish(&dvl_msg);
-            dvl_value = "";
+            dvl->publish();
+            dvl->resetReceivedData();
         }
 
-        last_char = dvl_serial.read();
+        dvl->setLastChar(dvl->getCurrentChar());
     }
 }
 

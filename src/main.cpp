@@ -227,6 +227,7 @@ void setup()
     InitializeCurrentsMessage();
     InitializeBatteryMonitor();
     InitializePingSonarDevices();
+    InitializeDVL();
     InitPressureSensor();
     InitController();
     pinMode(USER_BTN, INPUT);

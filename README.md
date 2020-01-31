@@ -15,6 +15,7 @@ The source code is released under [MIT License](LICENSE).
 - Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
 
 **Maintainers:** 
+- Furkan Akkiz, [furkanakkiz1998@gmail.com](mailto:furkanakkiz1998@gmail.com)
 - Sencer Yazici, [senceryazici@gmail.com](mailto:senceryazici@gmail.com)
 - Enes Demirag, [enesdemirag1@gmail.com](mailto:enesdemirag1@gmail.com)
 - Rusen Kuscuoglu, [rusenkuscuoglu@hotmail.com](mailto:rusenkuscuoglu@hotmail.com)

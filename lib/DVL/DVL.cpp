@@ -27,6 +27,33 @@ DVL::DVL(ros::Publisher *publisher)
     publisher_ = publisher;
 }
 
+void DVL::setDVLStream(Stream *stream)
+{
+    dvl_serial_ = stream;
+}
+
+void DVL::send(char *data)
+{
+    dvl_serial_->write(data);
+}
+
+void DVL::HandleDVLDataRoutine()
+{
+    while (dvl_serial_->available())
+    {
+        this->setCurrentChar((char)dvl_serial_->read());
+        this->updateReceivedData();
+
+        if(this->getLastChar() == '\r' && this->getCurrentChar() == '\n')
+        {
+            this->publish();
+            this->resetReceivedData();
+        }
+
+        this->setLastChar(this->getCurrentChar());
+    }
+}
+
 void DVL::resetReceivedData()
 {
     received_data_ = "";

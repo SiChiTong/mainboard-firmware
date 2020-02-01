@@ -128,7 +128,6 @@ void HandleArmedPublish();
 void LogStartUpInfo();
 void InitAux();
 void InitializeDVL();
-void HandleDVLData();
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -399,23 +398,7 @@ void InitAux()
 void InitializeDVL()
 {
     dvl = new DVL(&dvl_pub);
-}
-
-void HandleDVLData()
-{
-    while (dvl_serial.available())
-    {
-        dvl->setCurrentChar((char)dvl_serial.read());
-        dvl->updateReceivedData();
-
-        if(dvl->getLastChar() == '\r' && dvl->getCurrentChar() == '\n')
-        {
-            dvl->publish();
-            dvl->resetReceivedData();
-        }
-
-        dvl->setLastChar(dvl->getCurrentChar());
-    }
+    dvl->setDVLStream(&dvl_serial);
 }
 
 void ResetMotors()

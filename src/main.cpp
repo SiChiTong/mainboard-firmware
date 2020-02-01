@@ -57,7 +57,7 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
 
 void dvl_callback(const std_msgs::String& data)
 {
-    
+    //dvl->send(data.data.c_str());
 }
 
 void aux_callback(const std_msgs::Int16MultiArray& data)
@@ -262,6 +262,7 @@ void loop()
     HandlePingSonarRequests();
     HandlePressureSensorRoutine();
     HandleArmedPublish();
+    dvl->HandleDVLDataRoutine();
 
     // PublishMotorCurrents(1);
     nh.spinOnce();

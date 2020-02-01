@@ -21,11 +21,14 @@
 // SOFTWARE.
 
 #include <ros.h>
+#include <Arduino.h>
+#include <Stream.h>
 #include <std_msgs/String.h>
 
 class DVL
 {
 private:
+    Stream *dvl_serial_;
     ros::Publisher *publisher_;
     String received_data_ = "";
     char last_char_ = '\0';
@@ -37,10 +40,14 @@ public:
     String getReceivedData();
     char getLastChar();
     char getCurrentChar();
+    //void init();
+    void setDVLStream(Stream *stream);
+    void send(char *data);
     void resetReceivedData();
     void updateReceivedData();
     void setLastChar(char last_char);
     void setCurrentChar(char current_char);
+    void HandleDVLDataRoutine();
     void publish();
 
     ~DVL();

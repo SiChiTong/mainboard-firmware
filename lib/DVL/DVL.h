@@ -22,7 +22,6 @@
 
 #include <ros.h>
 #include <Arduino.h>
-#include <Stream.h>
 #include <std_msgs/String.h>
 
 class DVL
@@ -40,7 +39,6 @@ public:
     String getReceivedData();
     char getLastChar();
     char getCurrentChar();
-    //void init();
     void setDVLStream(Stream *stream);
     void send(char *data);
     void resetReceivedData();

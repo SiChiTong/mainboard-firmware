@@ -57,7 +57,7 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
 
 void dvl_callback(const std_msgs::String& data)
 {
-    //dvl->send(data.data.c_str());
+    dvl->send((char*)data.data);
 }
 
 void aux_callback(const std_msgs::Int16MultiArray& data)

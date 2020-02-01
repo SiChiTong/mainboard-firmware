@@ -398,6 +398,7 @@ void InitAux()
 void InitializeDVL()
 {
     dvl = new DVL(&dvl_pub);
+    dvl_serial.begin(115200);
     dvl->setDVLStream(&dvl_serial);
 }
 

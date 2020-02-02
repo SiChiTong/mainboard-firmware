@@ -98,7 +98,7 @@ void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
 void cmd_depth_callback(const std_msgs::Float32& data);
 void aux_callback(const std_msgs::Int16MultiArray& data);
-void dvl_callback(const std_msgs::String& data);
+void dvl_state_service_callback(const std_msgs::String& data);
 
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
@@ -295,6 +295,7 @@ void InitSubPub()
     nh.subscribe(dvl_sub);
 
     nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(arming_srv);
+    nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(dvl_srv);
 
     debugln("[PUB_SUB_INIT]");
 }

@@ -401,7 +401,11 @@ void InitAux()
 
 void InitializeDVL()
 {
+    dvl = new DVL(&dvl_pub);
+    dvl_serial.begin(115200);
+    dvl->setDVLStream(&dvl_serial);
     debugln("[DVL_INIT] " + String(DVL_STOP_PULSE_WIDTH) + " uS PULSE");
+    dvl->setPowerState(false);
     dvl->setPowerPin(DVL_PIN);
     dvl->servoWrite(DVL_STOP_PULSE_WIDTH);
 }

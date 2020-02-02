@@ -138,7 +138,7 @@ ros::NodeHandle nh;
  */
 Servo motors[8];
 Servo aux[AUX_LEN];
-Servo dvl_servo;
+Servo dvl_power_switch;
 
 /* HardwareTimers
  */

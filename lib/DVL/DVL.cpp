@@ -61,56 +61,36 @@ void DVL::HandleDVLDataRoutine()
 {
     while (dvl_serial_->available())
     {
-        this->setCurrentChar((char)dvl_serial_->read());
-        this->updateReceivedData();
+        char incoming_char = (char)dvl_serial_->read();
 
-        if(this->getLastChar() == '\r' && this->getCurrentChar() == '\n')
+        if (incoming_char == '\n')
         {
-            this->publish();
-            this->resetReceivedData();
-        }
+            if (received_data_[recv_index - 1] == '\r')
+            {
+                received_data_[recv_index - 1] = 0;
+                if (received_data_[0] == '#')
+                    publish();
+            }
 
-        this->setLastChar(this->getCurrentChar());
+            resetReceivedData();
+            recv_index = 0;
+            break;
+        }
+        else
+        {
+            if (recv_index <= DVL_MAX_BUFFER)
+                received_data_[recv_index++] = incoming_char;
+        }
     }
 }
 
 void DVL::resetReceivedData()
 {
-    received_data_ = "";
-}
-
-void DVL::updateReceivedData()
-{
-    received_data_ = received_data_ + current_char_;
-}
-
-void DVL::setCurrentChar(char current_char)
-{
-    current_char_ = current_char;
-}
-
-void DVL::setLastChar(char last_char)
-{
-    last_char_ = last_char;
-}
-
-String DVL::getReceivedData()
-{
-    return received_data_;
-}
-
-char DVL::getCurrentChar()
-{
-    return current_char_;
-}
-
-char DVL::getLastChar()
-{
-    return last_char_;
+    memcpy(received_data_, 0, sizeof received_data_);
 }
 
 void DVL::publish()
 {
-    msg.data = received_data_.c_str();
+    msg.data = received_data_;
     publisher_->publish(&msg);
 }

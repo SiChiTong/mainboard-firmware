@@ -34,6 +34,7 @@
 #define DVL_POWEROFF 1900
 #define DVL_POWERON  1100
 #define DVL_DEFAULT_BAUD 115200
+#define DVL_MAX_BUFFER   100
 
 class DVL
 {
@@ -41,23 +42,16 @@ private:
     HardwareSerial *dvl_serial_;
     Servo dvl_power_switch_;
     ros::Publisher *publisher_;
-    String received_data_ = "";
-    char last_char_ = '\0';
-    char current_char_ = '\0';
+    char received_data_[DVL_MAX_BUFFER];
+    uint16_t recv_index = 0; 
     bool dvl_state_ = false;
 
 public:
     std_msgs::String msg;
     DVL(ros::Publisher *publisher);
-    String getReceivedData();
-    char getLastChar();
-    char getCurrentChar();
     void setDVLStream(HardwareSerial *stream);
     void send(char *data);
     void resetReceivedData();
-    void updateReceivedData();
-    void setLastChar(char last_char);
-    void setCurrentChar(char current_char);
     bool getPowerState();
     void setPowerState(bool dvl_state);
     void setPowerPin(int dvl_pin);

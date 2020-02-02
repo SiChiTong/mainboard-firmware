@@ -23,6 +23,7 @@
 #define USE_ETHERNET
 #define FIRMWARE_VERSION "1.5"
 #define STANDALONE_USE
+#define ENABLE_CPU_LOAD_MEASURING
 // #define RELEASE_MODE
 
 
@@ -235,13 +236,15 @@ void InitNode()
 
         Ethernet.begin(mac, ip);
 
-        debug("[SELF_IP] ");
-        debugln(Ethernet.localIP());
-        debug("[HOST_IP] ");
-        debugln(server);
-        debug("[HOST_PORT] ");
-        debugln(serverPort);
-        
+        #ifndef RELEASE_MODE
+        Serial.print("[SELF_IP] ");
+        Serial.println(Ethernet.localIP());
+        Serial.print("[HOST_IP] ");
+        Serial.println(server);
+        Serial.print("[HOST_PORT] ");
+        Serial.println(serverPort);
+        #endif
+
         delay(1000);
 
         nh.getHardware()->setConnection(server, serverPort);

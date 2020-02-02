@@ -156,6 +156,31 @@ void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetB
     }
 }
 
+void dvl_state_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp)
+{
+    if (!req.data)
+    {
+        // Stop Request, Turning off.
+        debugln("[DVL_TURN_OFF_REQUEST]");
+        debugln("[DVL TURNING OFF]");
+        dvl_state = false;
+        dvl_servo.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
+        resp.success = true;
+    }
+    else
+    {
+        debugln("[DVL_TURN_ON_REQUEST]");
+        dvl = new DVL(&dvl_pub);
+        dvl_serial.begin(115200);
+        dvl->setDVLStream(&dvl_serial);
+        dvl_state = true;
+        dvl_servo.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
+        resp.success = true;
+        debugln("[DVL] ON !");
+    }
+}
+
+
 static void HardwareTimer_Callback(HardwareTimer* htim)
 {
     if (htim == IndicatorTimer)

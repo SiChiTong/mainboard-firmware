@@ -173,6 +173,7 @@ int dvl_pin = PC11;
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
 bool motor_armed = true;
+bool dvl_state = false;
 bool armed_publish_flag = false;
 
 Controller6DOF controller;
@@ -211,13 +212,14 @@ ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odom
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 ros::Subscriber<std_msgs::Float32> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
 ros::Subscriber<std_msgs::Int16MultiArray> aux_sub("/turquoise/aux", &aux_callback);
-ros::Subscriber<std_msgs::String> dvl_sub("/turquoise/dvl/to", &dvl_callback);
+// ros::Subscriber<std_msgs::String> dvl_sub("/turquoise/dvl/to", &dvl_callback);
 
 /**
  * @brief Services
  * 
  */
 ros::ServiceServer<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse> arming_srv("/turquoise/set_arming", &arming_service_callback);
+ros::ServiceServer<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse> dvl_srv("/turquoise/dvl/set_power", &dvl_state_service_callback);
 
 /* *************************** Functions *************************** */
 /* Initialize NodeHandle with ethernet or serial
@@ -399,10 +401,6 @@ void InitAux()
 
 void InitializeDVL()
 {
-    // dvl = new DVL(&dvl_pub);
-    // dvl_serial.begin(115200);
-    // dvl->setDVLStream(&dvl_serial);
-
     debugln("[DVL_INIT] " + String(DVL_STOP_PULSE_WIDTH) + " uS PULSE");
     while (!dvl_servo.attached()) { dvl_servo.attach(dvl_pin); } 
     dvl_servo.writeMicroseconds(DVL_STOP_PULSE_WIDTH);

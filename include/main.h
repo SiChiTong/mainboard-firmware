@@ -212,7 +212,7 @@ ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odom
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
 ros::Subscriber<std_msgs::Float32> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
 ros::Subscriber<std_msgs::Int16MultiArray> aux_sub("/turquoise/aux", &aux_callback);
-// ros::Subscriber<std_msgs::String> dvl_sub("/turquoise/dvl/to", &dvl_callback);
+ros::Subscriber<std_msgs::String> dvl_sub("/turquoise/dvl/to", &dvl_callback);
 
 /**
  * @brief Services

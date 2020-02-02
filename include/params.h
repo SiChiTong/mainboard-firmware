@@ -88,3 +88,7 @@
 #define MIN_AUX_PULSE_WIDTH              1100                      // AUX Minimum Pulse
 #define MAX_AUX_PULSE_WIDTH              1900                      // AUX Maximum Pulse
 /* ******************* AUX Channel Settings ********************* */
+
+/* ******************* DVL Channel Settings ********************* */
+#define DVL_PIN                          PC11                      // DVL Communication Pin
+/* ******************* DVL Channel Settings ********************* */

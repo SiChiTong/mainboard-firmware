@@ -20,33 +20,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-
-/* DEPRECEATED, DO NOT USE ETHERNET MODE.
- * Built in PlatformIO packages for ststm32
- * and framework-arduinoststm32 have been updated
- * to last version, and the last version does not
- * support s_timer types and TypeDefs, they've
- * implemented a new HardwareTimer class,
- * thus Stm32Ethernet library is no longer
- * working.
- * HardwareTimer Library:
- * https://github.com/stm32duino/wiki/wiki/HardwareTimer-library#Introduction
- *
- *
- * Open Pull Request here: https://github.com/stm32duino/STM32Ethernet
- */
-// #define USE_ETHERNET
+#define USE_ETHERNET
+#define FIRMWARE_VERSION "1.5"
+#define STANDALONE_USE
 // #define RELEASE_MODE
+
+
 #define ALLOW_DIRECT_CONTROL
-// #define ENABLE_SONARS
-// #define ENABLE_PRES_SENSOR
-// #define ENABLE_KILLSWITCH
 #define ENABLE_CUSTOM_SERVO
-#define ENABLE_CPU_LOAD_MEASURING
+
+#ifndef STANDALONE_USE
+/** Below functions require spesific hardware and program 
+ * won't initialize without them, if you are using stm32 board
+ * standalone/no additional hardware, then enable STANDALONE_USE
+ * to disable hardware spesific functions
+ */
+#define ENABLE_SONARS
+#define ENABLE_PRES_SENSOR
+#define ENABLE_KILLSWITCH
+#endif
 
 /* *************************** Includes *************************** */
+// Core includes
 #include <Arduino.h>
 #include <motor_config.h>
+#include <error_codes.h>
+#include <params.h>
+#include <debugging.h>
 
 #if defined(ENABLE_CUSTOM_SERVO)
     #include <CustomServo.h>
@@ -54,9 +54,6 @@
     #include <Servo.h>
 #endif
 
-#include <error_codes.h>
-#include <params.h>
-#include <debugging.h>
 
 #if defined(USE_ETHERNET)
     #include <ros_ethernet.h>
@@ -64,7 +61,7 @@
     #include <ros_serial.h>
 #endif
 
-#include <HardwareTimer.h>
+// Ros / Rosmsg includes
 #include <ros.h>
 #include <ros/time.h>
 #include <std_msgs/String.h>
@@ -76,12 +73,13 @@
 #include <std_msgs/Bool.h>
 #include <std_srvs/SetBool.h>
 #include <geometry_msgs/Twist.h>
-// #include <nav_msgs/Odometry.h>
 #include <mainboard_firmware/Odometry.h>
-#include <uuv_gazebo_ros_plugins_msgs/FloatStamped.h>
 #include <mainboard_firmware/Signal.h>
 #include <sensor_msgs/Range.h>
 #include <sensor_msgs/BatteryState.h>
+
+// Other includes
+#include <HardwareTimer.h>
 #include <ping1d.h>
 #include <transformations.h>
 #include <BatteryMonitor.h>
@@ -90,6 +88,7 @@
 #include <MS5837.h>
 #include <Controller6DOF.h>
 #include <tm_stm32f4_cpu_load.h>
+#include <DVL.h>
 /* *************************** Includes *************************** */
 
 
@@ -98,8 +97,13 @@ void cmd_vel_callback(const geometry_msgs::Twist& data);
 void odometry_callback(const mainboard_firmware::Odometry& data);
 void motor_callback(const std_msgs::Int16MultiArray& data);
 void command_callback(const mainboard_firmware::Signal& data);
+void cmd_depth_callback(const std_msgs::Float32& data);
+void aux_callback(const std_msgs::Int16MultiArray& data);
+void dvl_callback(const std_msgs::String& data);
+
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
+void dvl_state_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
 void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
@@ -124,6 +128,12 @@ void InitializeTimers();
 void InitController();
 void HandleArmedPublish();
 void LogStartUpInfo();
+void InitAux();
+bool KillSwitch_isKilled();
+void SystemWatchdog();
+void InitializeBatteryMonitor();
+void HandlePingSonarRequests();
+void InitializeDVL();
 
 /* *************************** Variables *************************** */
 /* Node Handle
@@ -133,6 +143,7 @@ ros::NodeHandle nh;
 /* Motors define.
  */
 Servo motors[8];
+Servo aux[AUX_LEN];
 
 /* HardwareTimers
  */
@@ -148,16 +159,19 @@ HardwareTimer *PIDTimer;
 HardwareSerial hwserial_3 = HardwareSerial(PE7, PE8);
 static Ping1D bottom_sonar { hwserial_3 };
 
+HardwareSerial dvl_serial = HardwareSerial(PE10, PE12);
+
 BatteryMonitor *bms;
 MS5837 pressure_sensor;
 TM_CPULOAD_t cpu_load;
+DVL *dvl;
 
 /* This section includes pinmaps for current sensors and auxilary channel pinmaps
  * currently, mainboard does not support such features
  * therefore these features are not tested yet.
  */
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
-int aux_pinmap[3] = {PD12, PD13, PD14};
+int aux_pinmap[AUX_LEN] = {PC10};
 
 /* Global Variables
  */
@@ -177,6 +191,7 @@ sensor_msgs::Range range_msg;
 sensor_msgs::BatteryState battery_msg;
 std_msgs::Bool armed_msg;
 std_msgs::Int8 cpu_load_msg;
+std_msgs::String dvl_msg;
 
 /**
  * @brief Publishers
@@ -187,6 +202,7 @@ ros::Publisher battery_state("/turquoise/battery_state", &battery_msg);
 ros::Publisher depth_pub("/turquoise/depth", &depth_msg);
 ros::Publisher armed_pub("/turquoise/is_armed", &armed_msg);
 ros::Publisher cpu_load_pub("/turquoise/nucleo/cpu_load", &cpu_load_msg);
+ros::Publisher dvl_pub("/turquoise/dvl/from", &dvl_msg);
 
 /**
  * @brief Subscribers
@@ -197,13 +213,16 @@ ros::Subscriber<std_msgs::Int16MultiArray> motor_subs("/turquoise/thrusters/inpu
 ros::Subscriber<mainboard_firmware::Signal> command_sub("/turquoise/signal", &command_callback);
 ros::Subscriber<mainboard_firmware::Odometry> odom_subb("/turquoise/odom", &odometry_callback);
 ros::Subscriber<geometry_msgs::Twist> cmd_vel_sub("/turquoise/cmd_vel", &cmd_vel_callback);
-
+ros::Subscriber<std_msgs::Float32> cmd_depth_sub("/turquoise/cmd_depth", &cmd_depth_callback);
+ros::Subscriber<std_msgs::Int16MultiArray> aux_sub("/turquoise/aux", &aux_callback);
+ros::Subscriber<std_msgs::String> dvl_sub("/turquoise/dvl/to", &dvl_callback);
 
 /**
  * @brief Services
  * 
  */
 ros::ServiceServer<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse> arming_srv("/turquoise/set_arming", &arming_service_callback);
+ros::ServiceServer<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse> dvl_srv("/turquoise/dvl/set_power", &dvl_state_service_callback);
 
 /* *************************** Functions *************************** */
 /* Initialize NodeHandle with ethernet or serial
@@ -268,6 +287,7 @@ void InitSubPub()
     #endif
     
     nh.advertise(battery_state);
+    nh.advertise(dvl_pub);
 
     #if defined(ALLOW_DIRECT_CONTROL)
     nh.subscribe(motor_subs);
@@ -277,9 +297,12 @@ void InitSubPub()
     // FIXME: Does this lines effect odom callback ?
     nh.subscribe(cmd_vel_sub);
     nh.subscribe(command_sub);
-
+    nh.subscribe(aux_sub);
+    nh.subscribe(cmd_depth_sub);
+    nh.subscribe(dvl_sub);
 
     nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(arming_srv);
+    nh.advertiseService<std_srvs::SetBoolRequest, std_srvs::SetBoolResponse>(dvl_srv);
 
     debugln("[PUB_SUB_INIT]");
 }
@@ -318,15 +341,19 @@ void GetPIDControllerParameters()
     controller.update_gains();
 }
 
+bool KillSwitch_isKilled()
+{
+    #ifdef ENABLE_KILLSWITCH
+    return digitalRead(KILLSWITCH_PIN);
+    #else
+    return false;
+    #endif
+}
+
 void PerformHaltModeCheck()
 {
     // Connection is up, skip mode check.
-    #ifdef ENABLE_KILLSWITCH
-    bool killswitch = digitalRead(PF13);
-    #else
-    bool killswitch = false;
-    #endif
-    if (nh.connected() && !killswitch) return;
+    if (nh.connected() && !KillSwitch_isKilled()) return;
     bool last_motor_armed = motor_armed;
 
     motor_armed = false;
@@ -342,7 +369,7 @@ void PerformHaltModeCheck()
     ResetMotors();
     /* *** HALT MODE ON / LOST CONNECTION *** */
 
-    while (!nh.connected() || killswitch) {
+    while (!nh.connected() || KillSwitch_isKilled()) {
         nh.spinOnce(); 
         delay(50); 
         digitalWrite(LED_RED, bms->getVoltage() < MIN_BATT_VOLTAGE);
@@ -376,6 +403,25 @@ void InitMotors()
         while (!motors[i].attached()) { motors[i].attach(motor_pinmap[i]); } 
         motors[i].writeMicroseconds(DEFAULT_PULSE_WIDTH);
     }
+}
+
+void InitAux()
+{
+    debugln("[AUX_INIT] " + String(DEFAULT_AUX_PULSE_WIDTH) + " uS PULSE");
+    for (size_t i = 0; i < AUX_LEN; i++)
+    {
+        while (!aux[i].attached()) { aux[i].attach(aux_pinmap[i]); } 
+        aux[i].writeMicroseconds(DEFAULT_AUX_PULSE_WIDTH);
+    }
+}
+
+void InitializeDVL()
+{
+    dvl = new DVL(&dvl_pub);
+    dvl->setDVLStream(&dvl_serial);
+    dvl->setPowerPin(DVL_PIN);
+    dvl->setPowerState(false);
+    debugln("[ DVL_INIT ]");
 }
 
 void ResetMotors()
@@ -474,7 +520,7 @@ void InitializeTimers()
     debugln("[CURRENT_COUNTING_TIMER_INIT]");
     #endif
 
-    PublishTimer = new HardwareTimer(TIM10);
+    PublishTimer = new HardwareTimer(PUBLISH_TIMER);
     PublishTimer->setOverflow(GLOBAL_PUBLISH_RATE, HERTZ_FORMAT);
     PublishTimer->attachInterrupt(HardwareTimer_Callback);
     PublishTimer->resume();
@@ -485,12 +531,14 @@ void InitializeTimers()
     PressureTimer->setOverflow(PRESSURE_INTERVAL, MICROSEC_FORMAT);
     PressureTimer->attachInterrupt(HardwareTimer_Callback);
     PressureTimer->resume();
+    debugln("[PRESSURE_TIMER_INIT]");
     #endif
 
     PIDTimer = new HardwareTimer(PID_TIMER);
     PIDTimer->setOverflow(PID_LOOP_RATE, HERTZ_FORMAT);
     PIDTimer->attachInterrupt(HardwareTimer_Callback);
     PIDTimer->resume();
+    debugln("[PID_TIMER_INIT]");
 }
 
 void InitController()
@@ -574,6 +622,10 @@ void InitializePeripheralPins()
     pinMode(LED_BLUE, OUTPUT);
     pinMode(CURRENT_SENS_PIN, INPUT);
     pinMode(VOLTAGE_SENS_PIN, INPUT);
+
+    #ifdef ENABLE_KILLSWITCH
+    pinMode(KILLSWITCH_PIN, INPUT_PULLUP);
+    #endif
 }
 
 void InitializeHardwareSerials()
@@ -664,8 +716,21 @@ void HandleArmedPublish()
 
 void LogStartUpInfo()
 {
-    nh.logwarn("Z Depth is only using bottom_sonar measurement.");
-    nh.logwarn("CMD_VEL.linear.z is a position parameter not speed, in meters, (m)");
+    nh.logwarn("Z Depth is only using 1 pressure sensor measurement.");
+    nh.logwarn("CMD_VEL.linear.z, CMD_VEL.angular.x/y are not used.");
+    nh.logwarn("Use cmd_depth topic, to set depth reference");
+
+    #ifndef ENABLE_KILLSWITCH
+    nh.logwarn("Killswitch is DISABLED, use with caution.");
+    #endif
+
+    #ifdef STANDALONE_USE
+    nh.logwarn("STANDALONE_USE: Pressure, Sonar, and switch are disabled.");
+    #else
+    nh.loginfo("NORMAL_USE: Hardware requiring functions are enabled (sensor, sonar, etc.)")
+    #endif
+
+    nh.loginfo(String("Firmware version: " + String(FIRMWARE_VERSION)).c_str());
 }
 
 // End of file. Copyright (c) 2019 ITU AUV Team / Electronics

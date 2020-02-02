@@ -22,6 +22,7 @@
 
 #include <Arduino.h>
 
+#define KILLSWITCH_PIN                   PF13                      // kill Switch Pin
 #define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.
 
 /* ******************* Communication Settings ******************* */
@@ -56,8 +57,8 @@
 #define VOLTAGE_SENS_MAX_VOLTS           18.0                      // 4S Max.
 #define ADC_TO_VOLTAGE_RATIO             0.0085                    // Module parameter
 #define ADC_TO_CURRENT_RATIO             0.0137134308511           // Module parameter
-#define MIN_BATT_VOLTAGE                 9.0                       // 3S Batt Min voltage
-#define LOW_BATT_VOLTAGE                 9.5                       // Low Voltage warning.
+#define MIN_BATT_VOLTAGE                 12.0                      // 3S Batt Min voltage
+#define LOW_BATT_VOLTAGE                 12.8                      // Low Voltage warning.
 /* **************** APM Common Power Module (CPM) **************** */
 
 /* ******************** Ping Sonar Settings ********************* */
@@ -81,3 +82,14 @@
 #define PUBLISH_TIMER                    TIM10                     // Used for Publish timer
 #define GLOBAL_PUBLISH_RATE              2                         // Used for batterystate / currents etc.
 /* ********************* Publish Settings *********************** */
+
+/* ******************* AUX Channel Settings ********************* */
+#define AUX_LEN                          1                         // AUX Channel Length
+#define DEFAULT_AUX_PULSE_WIDTH          1100                      // AUX Default Pulse
+#define MIN_AUX_PULSE_WIDTH              1100                      // AUX Minimum Pulse
+#define MAX_AUX_PULSE_WIDTH              1900                      // AUX Maximum Pulse
+/* ******************* AUX Channel Settings ********************* */
+
+/* ******************* DVL Channel Settings ********************* */
+#define DVL_PIN                          PC11                      // DVL Communication Pin
+/* ******************* DVL Channel Settings ********************* */

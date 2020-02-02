@@ -51,11 +51,16 @@ double Controller6DOF::set_velocity_reference(double *vel_ref)
     }
 }
 
+double Controller6DOF::set_velocity_reference_by_index(double vel_ref, int index)
+{
+    velocity_setpoint[index] = vel_ref;
+}
+
 void Controller6DOF::run()
 {
     for (size_t i = 0; i < 6; i++)
     {
-        controller_output[i] = controllers[i].run(velocity_setpoint[i], n[i], dt);
+        controller_output[i] = controllers[i].run(velocity_setpoint[i], n[i], dt) + offset[i];
     }
 
     for (size_t i = 0; i < 8; i++)

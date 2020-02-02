@@ -102,6 +102,7 @@ void dvl_callback(const std_msgs::String& data);
 
 static void HardwareTimer_Callback(HardwareTimer* htim);
 void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
+void dvl_state_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp);
 void InitNode();
 void InitSubPub();
 void GetThrusterAllocationMatrix();
@@ -172,7 +173,6 @@ int aux_pinmap[AUX_LEN] = {PC10};
 uint32_t last_motor_update = millis();
 bool last_motor_timeout_state = false;  //motor disabled
 bool motor_armed = true;
-bool dvl_state = false;
 bool armed_publish_flag = false;
 
 Controller6DOF controller;
@@ -401,8 +401,8 @@ void InitAux()
 void InitializeDVL()
 {
     debugln("[DVL_INIT] " + String(DVL_STOP_PULSE_WIDTH) + " uS PULSE");
-    while (!dvl_power_switch.attached()) { dvl_power_switch.attach(DVL_PIN); } 
-    dvl_power_switch.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
+    dvl->setPowerPin(DVL_PIN);
+    dvl->servoWrite(DVL_STOP_PULSE_WIDTH);
 }
 
 void ResetMotors()

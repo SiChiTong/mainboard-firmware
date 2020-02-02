@@ -20,18 +20,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#define ENABLE_CUSTOM_SERVO
+
 #include <ros.h>
 #include <Arduino.h>
 #include <std_msgs/String.h>
+#include <CustomServo.h>
+
+#if defined(ENABLE_CUSTOM_SERVO)
+    #include <CustomServo.h>
+#else
+    #include <Servo.h>
+#endif
 
 class DVL
 {
 private:
     Stream *dvl_serial_;
+    Servo dvl_power_switch_;
     ros::Publisher *publisher_;
     String received_data_ = "";
     char last_char_ = '\0';
     char current_char_ = '\0';
+    bool dvl_state_ = false;
 
 public:
     std_msgs::String msg;
@@ -45,6 +56,10 @@ public:
     void updateReceivedData();
     void setLastChar(char last_char);
     void setCurrentChar(char current_char);
+    bool getPowerState();
+    void setPowerState(bool dvl_state);
+    void setPowerPin(int dvl_pin);
+    void servoWrite(int value);
     void HandleDVLDataRoutine();
     void publish();
 

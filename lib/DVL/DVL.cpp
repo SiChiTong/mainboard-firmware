@@ -32,6 +32,26 @@ void DVL::setDVLStream(Stream *stream)
     dvl_serial_ = stream;
 }
 
+bool DVL::getPowerState()
+{
+    return dvl_state_;
+}
+
+void DVL::setPowerState(bool dvl_state)
+{
+    dvl_state_ = dvl_state;
+}
+
+void DVL::setPowerPin(int dvl_pin)
+{
+    while (!dvl_power_switch_.attached()) { dvl_power_switch_.attach(dvl_pin); }
+}
+
+void DVL::servoWrite(int value)
+{
+    dvl_power_switch_.writeMicroseconds(value);
+}
+
 void DVL::send(char *data)
 {
     dvl_serial_->write(data);

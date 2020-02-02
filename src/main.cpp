@@ -174,7 +174,7 @@ void dvl_state_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::S
         dvl_serial.begin(115200);
         dvl->setDVLStream(&dvl_serial);
         dvl_state = true;
-        dvl_servo.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
+        dvl_servo.writeMicroseconds(DVL_START_PULSE_WIDTH);
         resp.success = true;
         debugln("[DVL] ON !");
     }

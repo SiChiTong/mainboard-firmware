@@ -404,7 +404,7 @@ void InitializeDVL()
     dvl->setDVLStream(&dvl_serial);
     dvl->setPowerPin(DVL_PIN);
     dvl->setPowerState(false);
-    debugln("[DVL_INIT] " + String(DVL_STOP_PULSE_WIDTH) + " uS PULSE");
+    debugln("[ DVL_INIT ]");
 }
 
 void ResetMotors()

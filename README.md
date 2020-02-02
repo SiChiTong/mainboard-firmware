@@ -262,6 +262,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
+    | KILLSWITCH_PIN | PF13 | Pin | Killswitch Pin | 
     | ACS712_30A_SENS_MV_PER_AMP | 66.0 | mV / A| 66 mV per 1.A | 
     | ACS712_20A_SENS_MV_PER_AMP | 100.0 | mV / A| 100 mV per 1.A |
     | ADC_READ_RESOLUTION_BIT | 12 | bit | 12 bits for analog read resolution |

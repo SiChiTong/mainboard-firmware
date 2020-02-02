@@ -22,6 +22,7 @@
 
 #include <Arduino.h>
 
+#define KILLSWITCH_PIN                   PF13                      // kill Switch Pin
 #define MOTOR_TIMEOUT                    400                       // the max time (in ms) between each motor cmd.
 
 /* ******************* Communication Settings ******************* */

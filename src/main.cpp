@@ -249,7 +249,6 @@ void setup()
     InitPressureSensor();
     InitController();
     pinMode(USER_BTN, INPUT);
-    pinMode(PF13, INPUT_PULLUP);
     
     InitializeTimers();
     /* ********** HALT OPERATION ********** */

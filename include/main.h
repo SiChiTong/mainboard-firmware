@@ -138,6 +138,7 @@ ros::NodeHandle nh;
  */
 Servo motors[8];
 Servo aux[AUX_LEN];
+Servo dvl_servo;
 
 /* HardwareTimers
  */
@@ -165,6 +166,7 @@ DVL *dvl;
  */
 int current_sens_pins[8] = {PA0, PC0, PC0, PC0, PA3, PA6, PA7, PB6};
 int aux_pinmap[AUX_LEN] = {PC10};
+int dvl_pin = PC11;
 
 /* Global Variables
  */
@@ -397,9 +399,13 @@ void InitAux()
 
 void InitializeDVL()
 {
-    dvl = new DVL(&dvl_pub);
-    dvl_serial.begin(115200);
-    dvl->setDVLStream(&dvl_serial);
+    // dvl = new DVL(&dvl_pub);
+    // dvl_serial.begin(115200);
+    // dvl->setDVLStream(&dvl_serial);
+
+    debugln("[DVL_INIT] " + String(DVL_STOP_PULSE_WIDTH) + " uS PULSE");
+    while (!dvl_servo.attached()) { dvl_servo.attach(dvl_pin); } 
+    dvl_servo.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
 }
 
 void ResetMotors()

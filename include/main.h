@@ -401,8 +401,8 @@ void InitAux()
 void InitializeDVL()
 {
     debugln("[DVL_INIT] " + String(DVL_STOP_PULSE_WIDTH) + " uS PULSE");
-    while (!dvl_servo.attached()) { dvl_servo.attach(DVL_PIN); } 
-    dvl_servo.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
+    while (!dvl_power_switch.attached()) { dvl_power_switch.attach(DVL_PIN); } 
+    dvl_power_switch.writeMicroseconds(DVL_STOP_PULSE_WIDTH);
 }
 
 void ResetMotors()

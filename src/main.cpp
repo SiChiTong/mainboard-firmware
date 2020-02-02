@@ -158,23 +158,19 @@ void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetB
 
 void dvl_state_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp)
 {
-    if (!dvl->getPowerState())
+    dvl->setPowerState(req.data);
+
+    if (req.data)
     {
-        // Stop Request, Turning off.
-        debugln("[DVL_TURN_OFF_REQUEST]");
-        debugln("[DVL TURNING OFF]");
-        dvl->setPowerState(req.data);
-        dvl->servoWrite(DVL_STOP_PULSE_WIDTH);
-        resp.success = true;
+        debugln("[DVL_TURN_ON_REQUEST]");
+        debugln("[DVL] ON");
     }
     else
     {
-        debugln("[DVL_TURN_ON_REQUEST]");
-        dvl->setPowerState(req.data);
-        dvl->servoWrite(DVL_START_PULSE_WIDTH);
-        resp.success = true;
-        debugln("[DVL] ON !");
+        debugln("[DVL_TURN_OFF_REQUEST]");
+        debugln("[DVL] OFF !");
     }
+    resp.success = true;
 }
 
 

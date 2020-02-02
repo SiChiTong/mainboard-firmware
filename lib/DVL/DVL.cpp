@@ -27,9 +27,10 @@ DVL::DVL(ros::Publisher *publisher)
     publisher_ = publisher;
 }
 
-void DVL::setDVLStream(Stream *stream)
+void DVL::setDVLStream(HardwareSerial *stream)
 {
     dvl_serial_ = stream;
+    dvl_serial_->begin(DVL_DEFAULT_BAUD);
 }
 
 bool DVL::getPowerState()
@@ -40,16 +41,15 @@ bool DVL::getPowerState()
 void DVL::setPowerState(bool dvl_state)
 {
     dvl_state_ = dvl_state;
+
+    if (dvl_state_) dvl_power_switch_.writeMicroseconds(DVL_POWERON);
+    else dvl_power_switch_.writeMicroseconds(DVL_POWEROFF);
 }
 
 void DVL::setPowerPin(int dvl_pin)
 {
     while (!dvl_power_switch_.attached()) { dvl_power_switch_.attach(dvl_pin); }
-}
-
-void DVL::servoWrite(int value)
-{
-    dvl_power_switch_.writeMicroseconds(value);
+    setPowerState(false);
 }
 
 void DVL::send(char *data)

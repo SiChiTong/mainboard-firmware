@@ -55,6 +55,11 @@ void odometry_callback(const mainboard_firmware::Odometry& data)
     controller.set_position(n);
 }
 
+void dvl_callback(const std_msgs::String& data)
+{
+    dvl->send((char*)data.data);
+}
+
 void aux_callback(const std_msgs::Int16MultiArray& data)
 {
     for (size_t i = 0; i < AUX_LEN; i++)
@@ -151,6 +156,24 @@ void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetB
     }
 }
 
+void dvl_state_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetBoolResponse& resp)
+{
+    dvl->setPowerState(req.data);
+
+    if (req.data)
+    {
+        debugln("[DVL_TURN_ON_REQUEST]");
+        debugln("[DVL] ON");
+    }
+    else
+    {
+        debugln("[DVL_TURN_OFF_REQUEST]");
+        debugln("[DVL] OFF !");
+    }
+    resp.success = true;
+}
+
+
 static void HardwareTimer_Callback(HardwareTimer* htim)
 {
     if (htim == IndicatorTimer)
@@ -222,6 +245,7 @@ void setup()
     InitializeCurrentsMessage();
     InitializeBatteryMonitor();
     InitializePingSonarDevices();
+    InitializeDVL();
     InitPressureSensor();
     InitController();
     pinMode(USER_BTN, INPUT);
@@ -255,6 +279,7 @@ void loop()
     HandlePingSonarRequests();
     HandlePressureSensorRoutine();
     HandleArmedPublish();
+    dvl->HandleDVLDataRoutine();
 
     // PublishMotorCurrents(1);
     nh.spinOnce();

@@ -122,6 +122,7 @@ void arming_service_callback(const std_srvs::SetBoolRequest& req, std_srvs::SetB
         debugln("[DISARM_REQUEST]");
         debugln("[DISARMING]");
         motor_armed = false;
+        ResetMotors();
         resp.success = true;
     }
     else
@@ -231,12 +232,12 @@ static void HardwareTimer_Callback(HardwareTimer* htim)
  */
 void setup()
 {
+    InitializeDVL();
     Serial.begin(DEBUG_BAUDRATE);
     InitializeHardwareSerials();
     debugln("[ROS_INIT]");
     InitNode();
     InitSubPub();
-
     debugln("[ADC_RES]: " + String(ADC_READ_RESOLUTION_BIT));
     analogReadResolution(ADC_READ_RESOLUTION_BIT);
     InitMotors();
@@ -245,7 +246,6 @@ void setup()
     InitializeCurrentsMessage();
     InitializeBatteryMonitor();
     InitializePingSonarDevices();
-    InitializeDVL();
     InitPressureSensor();
     InitController();
     pinMode(USER_BTN, INPUT);

@@ -20,15 +20,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define USE_ETHERNET
+// #define USE_ETHERNET
 #define FIRMWARE_VERSION "1.5"
-#define STANDALONE_USE
+// #define STANDALONE_USE
 #define ENABLE_CPU_LOAD_MEASURING
 // #define RELEASE_MODE
 
 
 #define ALLOW_DIRECT_CONTROL
-#define ENABLE_CUSTOM_SERVO
 
 #ifndef STANDALONE_USE
 /** Below functions require spesific hardware and program 
@@ -48,12 +47,7 @@
 #include <error_codes.h>
 #include <params.h>
 #include <debugging.h>
-
-#if defined(ENABLE_CUSTOM_SERVO)
-    #include <CustomServo.h>
-#else
-    #include <Servo.h>
-#endif
+#include <CustomServo.h>
 
 
 #if defined(USE_ETHERNET)
@@ -730,7 +724,7 @@ void LogStartUpInfo()
     #ifdef STANDALONE_USE
     nh.logwarn("STANDALONE_USE: Pressure, Sonar, and switch are disabled.");
     #else
-    nh.loginfo("NORMAL_USE: Hardware requiring functions are enabled (sensor, sonar, etc.)")
+    nh.loginfo("NORMAL_USE: Hardware requiring functions are enabled (sensor, sonar, etc.)");
     #endif
 
     nh.loginfo(String("Firmware version: " + String(FIRMWARE_VERSION)).c_str());

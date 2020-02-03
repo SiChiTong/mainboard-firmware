@@ -24,12 +24,7 @@
 #include <Arduino.h>
 #include <std_msgs/String.h>
 #include <HardwareSerial.h>
-
-#if defined(ENABLE_CUSTOM_SERVO)
-    #include <CustomServo.h>
-#else
-    #include <Servo.h>
-#endif
+#include <CustomServo.h>
 
 #define DVL_POWEROFF 1900
 #define DVL_POWERON  1100

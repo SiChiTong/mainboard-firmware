@@ -7,7 +7,7 @@ import serial
 
 class NucleoStatusNode:
     def __init__(self):
-        self.port = rospy.get_param("~port", default="/dev/ttyACM0")
+        self.port = rospy.get_param("~port", default="/dev/ttySTLINK")
         self.baud = rospy.get_param("~baud", default=57600)
         self.serial_port = serial.Serial(port=self.port, baudrate=self.baud)
 
@@ -29,7 +29,7 @@ class NucleoStatusNode:
     def spin(self):
         while not rospy.is_shutdown():
             if not self.serial_port.is_open:
-                break
+                continue
             serial_string = None
             try:
                 serial_string = self.serial_port.read_until("\n").replace("\n", "")

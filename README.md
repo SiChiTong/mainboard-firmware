@@ -281,6 +281,14 @@ This node acts as a bridge between the node running in microcontroller and ROS.
     | XAVIER_RX | PD2 | Pin | Rx Pin used to connect to the ROS Computer |
     | XAVIER_TX | PC12 | Pin | Tx Pin used to connect to the ROS Computer |
 
+#### Udev Rules for Communication
+* Under /etc/udev/rules.d directory, ```auv.rules``` file. 
+
+> SUBSYSTEM=="video4linux",ATTRS{idVendor}=="05a3", ATTRS{idProduct}=="9422", ATTRS{serial}=="SN0001", SYMLINK+="front_cam"
+> SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", SYMLINK+="ttySTM"
+> SUBSYSTEM=="tty", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", SYMLINK+="ttySTLINK"
+> SUBSYSTEM=="tty", ATTRS{idVendor}=="2639", ATTRS{idProduct}=="0017", SYMLINK+="ttyXSENS"
+
 ## Bugs & Feature Requests
 
 Please report bugs and request features using the [Issue Tracker](https://gitlab.com/itu-auv/electronics/issues).

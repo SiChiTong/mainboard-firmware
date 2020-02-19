@@ -33,7 +33,8 @@
 
 // Temporary pinmap
 const int motor_pinmap[8] = {PF8, PD6, PE5, PE3, PE2, PG3, PF0, PD3};
-const int thruster_direction[8] = {1, 1, 1, 1, 1, 1, 1, 1};
+const int thruster_direction[8] = {1, -1, 1, -1, 1, -1, 1, 1};
+
 #define POS_FIT_P1 -0.1717
 #define POS_FIT_P2 18.2
 #define POS_FIT_P3 1543
@@ -62,7 +63,8 @@ int get_pwm(double force, int direction)
     {
         if (direction == -1)
         {
-            return negative_fit(-force);
+            // 1500 - (X - 1500) For EX: X = 1700, result = 1300 // output is Symmetric with X(input) to 1500
+            return 2 * DEFAULT_PULSE_WIDTH - negative_fit(-force);
         }
         else
         {
@@ -73,7 +75,8 @@ int get_pwm(double force, int direction)
     {
         if (direction == -1)
         {
-            return positive_fit(-force);
+            // 1500 - (X - 1500) For EX: X = 1700, result = 1300 // output is Symmetric with X(input) to 1500
+            return 2 * DEFAULT_PULSE_WIDTH - positive_fit(-force);
         }
         else
         {

@@ -60,7 +60,7 @@ void Controller6DOF::run()
 {
     for (size_t i = 0; i < 6; i++)
     {
-        controller_output[i] = controllers[i].run(velocity_setpoint[i], n[i], dt);
+        controller_output[i] = controllers[i].run(velocity_setpoint[i], n[i], dt) + offset[i];
     }
 
     for (size_t i = 0; i < 8; i++)

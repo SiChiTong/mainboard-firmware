@@ -20,20 +20,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#define STM32ETHERNET
-#define ROSSERIAL_ARDUINO_TCP
-#include <SPI.h>
-#include <LwIP.h>
-#include <STM32Ethernet.h>
+#include <ros.h>
+#include <Arduino.h>
+#include <std_msgs/String.h>
+#include <HardwareSerial.h>
+#include <CustomServo.h>
 
+#define DVL_POWEROFF 1900
+#define DVL_POWERON  1100
+#define DVL_DEFAULT_BAUD 115200
+#define DVL_MAX_BUFFER   100
 
-// Set the shield settings
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 176);
-// IPAddress ip(160, 75, 46, 192);
+class DVL
+{
+private:
+    HardwareSerial *dvl_serial_;
+    Servo dvl_power_switch_;
+    ros::Publisher *publisher_;
+    char received_data_[DVL_MAX_BUFFER];
+    uint16_t recv_index = 0; 
+    bool dvl_state_ = false;
 
-// Set the rosserial socket server IP address
-IPAddress server(192, 168, 1, 175);
-// IPAddress server(160, 75, 46, 191);
-// Set the rosserial socket server port
-const uint16_t serverPort = 11411;
+public:
+    std_msgs::String msg;
+    DVL(ros::Publisher *publisher);
+    void setDVLStream(HardwareSerial *stream);
+    void send(char *data);
+    void resetReceivedData();
+    bool getPowerState();
+    void setPowerState(bool dvl_state);
+    void setPowerPin(int dvl_pin);
+    void HandleDVLDataRoutine();
+    void publish();
+
+    ~DVL();
+};

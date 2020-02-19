@@ -30,8 +30,42 @@ As a microcontroller ST Nucleo F429ZI is used.
 ![Nucleo STM32F429ZI](https://os.mbed.com/media/cache/platforms/Nucleo144_perf_logo_1024_qTjTDC0.jpg.250x250_q85.jpg)
 
 #### Todo: 
-- add connection diagram
 
+- Pin Connection Table
+
+
+    | Pin Number | Connection | Description of Pin |
+    | --- | --- | --- |
+    | PC2 | Battery Current Sensor | ADC Pin |
+    | PB1 | Battery Voltage Sensor | ADC Pin |
+    | PF8 | Motor 1 | Motor 1 Signal Input Pin |
+    | PD6 | Motor 2 | Motor 2 Signal Input Pin |
+    | PE5 | Motor 3 | Motor 3 Signal Input Pin |
+    | PE3 | Motor 4 | Motor 4 Signal Input Pin |
+    | PE2 | Motor 5 | Motor 5 Signal Input Pin |
+    | PG3 | Motor 6 | Motor 6 Signal Input Pin |
+    | PF0 | Motor 7 | Motor 7 Signal Input Pin |
+    | PD3 | Motor 8 | Motor 8 Signal Input Pin |
+    | PA0 | Motor 1 Current Sensor | ADC Pin |
+    | PC0 | Motor 2 Current Sensor | ADC Pin |
+    | PC0 | Motor 3 Current Sensor | ADC Pin |
+    | PC0 | Motor 4 Current Sensor | ADC Pin |
+    | PA3 | Motor 5 Current Sensor | ADC Pin |
+    | PA6 | Motor 6 Current Sensor | ADC Pin |
+    | PA7 | Motor 7 Current Sensor | ADC Pin |
+    | PB6 | Motor 8 Current Sensor | ADC Pin |
+    | PC10 | Light | Light Control Pin |
+    | PF13 | Kill Switch | Kill Switch Pin |
+    | PC13 | User Button | User Button Pin |
+    | PB0 | Green Led | Led Pin |
+    | PB7 | Blue Led | Led Pin |
+    | PB14 | Red Led | Led Pin |
+    | PD2 | Xavier RX | UART Receive Pin |
+    | PC12 | Xavier TX | UART Transmit Pin |
+    | PE7 | Bottom Sonar RX | UART Receive Pin |
+    | PE8 | Bottom Sonar TX | UART Transmit Pin |
+    | PE10 | Doppler Velocity Log RX | UART Receive Pin |
+    | PE12 | Doppler Velocity Log TX | UART Transmit Pin |
 
 ## Installation
 
@@ -228,6 +262,7 @@ This node acts as a bridge between the node running in microcontroller and ROS.
 
     | PARAMETER | DEFAULT | TYPE | DESCRIPTION |
     |--|--|--|--|
+    | KILLSWITCH_PIN | PF13 | Pin | Killswitch Pin | 
     | ACS712_30A_SENS_MV_PER_AMP | 66.0 | mV / A| 66 mV per 1.A | 
     | ACS712_20A_SENS_MV_PER_AMP | 100.0 | mV / A| 100 mV per 1.A |
     | ADC_READ_RESOLUTION_BIT | 12 | bit | 12 bits for analog read resolution |

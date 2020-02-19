@@ -58,6 +58,7 @@ void BatteryMonitor::publish(ros::Time now)
         msg.header.stamp = now;
         msg.voltage = voltage_;
         msg.current = -current_;
+        msg.charge = current_consumption_;
         publisher_->publish(&msg);
         pending_publish = false;
     }

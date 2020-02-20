@@ -16,6 +16,6 @@ allocation_rz: [0.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0]            # angular.z
 pid_cx: [25.0, 0.0, 0.0]                                            # linear.x
 pid_cy: [0.0, 0.0, 0.0]                                             # linear.y
 pid_cz: [15.0, 0.0, 0.0]                                            # linear.z
-pid_rx: [15.0, 0.0, 0.0]                                            # angular.x
-pid_ry: [15.0, 0.0, 0.0]                                            # angular.y
-pid_rz: [20.0, 0.0, 0.0]                                            # angular.z
+pid_rx: [8.0, 0.0, 0.2]                                            # angular.x
+pid_ry: [8.0, 0.0, 0.2]                                            # angular.y
+pid_rz: [20.0, 0.1, 0.2]                                            # angular.z

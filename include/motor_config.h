@@ -33,7 +33,7 @@
 
 // Temporary pinmap
 const int motor_pinmap[8] = {PF8, PD6, PE5, PE3, PE2, PG3, PF0, PD3};
-const int thruster_direction[8] = {1, -1, 1, -1, 1, -1, 1, 1};
+const int thruster_direction[8] = {-1, -1, -1, -1, -1, -1, 1, 1};
 
 #define POS_FIT_P1 -0.1717
 #define POS_FIT_P2 18.2

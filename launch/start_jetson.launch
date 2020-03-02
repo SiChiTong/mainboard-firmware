@@ -7,4 +7,5 @@
     <node pkg="mainboard_firmware" type="serial_node.py" name="serial_node" args="$(arg connection)" output="screen" respawn="true">
         <rosparam file="$(find mainboard_firmware)/config/default.yaml" command="load"/>
     </node>
+    <node pkg="mainboard_firmware" type="aux_remapper.py" name="auxilary_service" output="screen"/>
 </launch>
